@@ -94,6 +94,47 @@ class AnthropicProvider implements AIProvider {
   }
 }
 
+/**
+ * xAI Grok provider — OpenAI-compatible chat API (https://api.x.ai/v1).
+ * Model via XAI_MODEL (see console.x.ai for current IDs); defaults to grok-4.
+ */
+class XAIProvider implements AIProvider {
+  readonly name = "xai";
+  readonly enabled = true;
+  private apiKey: string;
+  private model: string;
+  constructor(apiKey: string, model?: string) {
+    this.apiKey = apiKey;
+    this.model = model || "grok-4";
+  }
+  private async chat(system: string, user: string): Promise<string> {
+    const res = await fetch("https://api.x.ai/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${this.apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: this.model,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user }
+        ],
+        temperature: 0.7,
+        max_tokens: 800
+      })
+    });
+    if (!res.ok) throw new Error(`AI_PROVIDER_ERROR: xAI ${res.status}`);
+    const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+    const text = json.choices?.[0]?.message?.content?.trim();
+    if (!text) throw new Error("AI_PROVIDER_ERROR: empty response");
+    return text;
+  }
+  generate(kind: GenerateKind, rawText: string): Promise<string> {
+    return this.chat(SYSTEM_WRITER, `${PROMPTS[kind]}\n\nArtist notes:\n${rawText}`);
+  }
+  assist(prompt: string, context: string): Promise<string> {
+    return this.chat(SYSTEM_COACH, `Artist context:\n${context}\n\nQuestion:\n${prompt}`);
+  }
+}
+
 const SYSTEM_WRITER =
   "You are a professional art writer helping emerging African visual artists. Write concise, credible, gallery-ready copy. No hype, no invented exhibitions or awards.";
 const SYSTEM_COACH =
@@ -110,6 +151,7 @@ function resolveProvider(): AIProvider {
   const kind = (process.env.AI_PROVIDER ?? "NONE").toUpperCase();
   if (kind === "OPENAI" && process.env.OPENAI_API_KEY) return new OpenAIProvider(process.env.OPENAI_API_KEY);
   if (kind === "ANTHROPIC" && process.env.ANTHROPIC_API_KEY) return new AnthropicProvider(process.env.ANTHROPIC_API_KEY);
+  if (kind === "XAI" && process.env.XAI_API_KEY) return new XAIProvider(process.env.XAI_API_KEY, process.env.XAI_MODEL || undefined);
   return new NoopProvider();
 }
 

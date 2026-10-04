@@ -19,3 +19,4 @@ Thumbs.db
 
 # vercel
 .vercel
+tsconfig.tsbuildinfo

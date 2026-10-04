@@ -59,10 +59,12 @@ export async function GET() {
     aiProvider: ai,
     aiKeys: {
       openai: looksReal(process.env.OPENAI_API_KEY, 20),
-      anthropic: looksReal(process.env.ANTHROPIC_API_KEY, 20)
+      anthropic: looksReal(process.env.ANTHROPIC_API_KEY, 20),
+      xai: looksReal(process.env.XAI_API_KEY, 20)
     },
     aiReady:
       (ai === "OPENAI" && looksReal(process.env.OPENAI_API_KEY, 20)) ||
-      (ai === "ANTHROPIC" && looksReal(process.env.ANTHROPIC_API_KEY, 20))
+      (ai === "ANTHROPIC" && looksReal(process.env.ANTHROPIC_API_KEY, 20)) ||
+      (ai === "XAI" && looksReal(process.env.XAI_API_KEY, 20))
   });
 }
