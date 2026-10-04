@@ -7,10 +7,10 @@ import { logger } from "@/lib/logger";
  */
 export async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
   const key = process.env.RESEND_API_KEY;
-  if (!key || !to) return false;
+  const from = process.env.RESEND_FROM;
+  if (!key || !from || !to) return false;
   try {
     const resend = new Resend(key);
-    const from = process.env.RESEND_FROM ?? "TranzartX <hello@tranzartx.com>";
     const { error } = await resend.emails.send({ from, to, subject, html });
     if (error) {
       logger.error(`Resend: ${error.message}`);
