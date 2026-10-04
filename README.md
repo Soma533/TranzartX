@@ -1,5 +1,26 @@
 # TranzartX
 
+An African art commerce and professional networking platform designed primarily for emerging African visual artists.
+
+**What it does**
+
+- **Art marketplace:** artists list and sell original works directly to buyers, with secure payments.
+- **Professional networking:** artists create portfolios and connect with galleries, collectors, curators, and other artists.
+- **Discovery:** buyers discover emerging talent by style, medium, country, and price.
+- **Career growth:** opportunities, commissions, exhibitions, and guidance for emerging artists.
+
+**Who it's for**
+
+- Emerging African visual artists
+- Collectors and art lovers
+- Galleries, curators, and art organizations
+
+**Tagline:** Don't just showcase your art. Build your career.
+
+---
+
+## For developers
+
 African art commerce and professional networking for emerging artists.
 **Don't just showcase your art. Build your career.**
 
