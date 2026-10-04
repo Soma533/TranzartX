@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 20 14% 8%;
+  --primary: 22 85% 48%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 40 20% 96%;
+  --secondary-foreground: 20 14% 12%;
+  --muted: 40 15% 94%;
+  --muted-foreground: 25 8% 42%;
+  --accent: 38 90% 92%;
+  --accent-foreground: 22 60% 25%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 30 12% 88%;
+  --input: 30 12% 88%;
+  --ring: 22 85% 48%;
+  --radius: 0.75rem;
+}
+
+* { border-color: hsl(var(--border)); }
+body { @apply bg-background text-foreground antialiased; }
