@@ -1,0 +1,20 @@
+name: Deadline reminders
+
+on:
+  schedule:
+    # Mondays 07:00 UTC — notifies artists of opportunities closing within 7 days.
+    - cron: "0 7 * * 1"
+  workflow_dispatch: {}
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger deadline reminders
+        run: |
+          CODE=$(curl -sS -o /tmp/deadlines.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            https://tranzartx.netlify.app/api/cron/deadlines)
+          echo "HTTP $CODE"
+          cat /tmp/deadlines.json
+          test "$CODE" = "200"
