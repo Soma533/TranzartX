@@ -4,14 +4,22 @@ import { NextResponse, type NextRequest } from "next/server";
 /** Refresh Supabase auth cookies on every request. Skips silently when env is not configured yet. */
 export async function middleware(request: NextRequest) {
   // Email links fall back to the Site URL root when a custom redirect path is
-  // not allowlisted. Route any auth token landing on / to the reset page.
+  // not allowlisted. Route recovery tokens to reset; confirmed signups to login.
   const params = request.nextUrl.searchParams;
-  if (
-    request.nextUrl.pathname === "/" &&
-    (params.get("code") ?? params.get("token") ?? params.get("token_hash"))
-  ) {
+  const otp = params.get("code") ?? params.get("token") ?? params.get("token_hash");
+  const otpType = params.get("type");
+  if (request.nextUrl.pathname === "/" && otp) {
     const url = request.nextUrl.clone();
-    url.pathname = "/auth/reset";
+    if (otpType === "signup" || otpType === "invite") {
+      url.pathname = "/login";
+      url.searchParams.set("confirmed", "1");
+      url.searchParams.delete("token");
+      url.searchParams.delete("token_hash");
+      url.searchParams.delete("code");
+      url.searchParams.delete("type");
+    } else {
+      url.pathname = "/auth/reset";
+    }
     return NextResponse.rewrite(url);
   }
   // NOTE: no hostname canonicalization here — something on this machine

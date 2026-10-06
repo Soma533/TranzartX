@@ -25,7 +25,7 @@ function friendly(message: string): string {
   return message;
 }
 
-export function AuthForm({ mode }: { mode: "login" | "signup" }) {
+export function AuthForm({ mode, notice }: { mode: "login" | "signup"; notice?: string | null }) {
   const router = useRouter();
   const [serverMsg, setServerMsg] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
@@ -78,6 +78,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
       <p className="mt-1 text-sm text-muted-foreground">
         {mode === "signup" ? "Build your career, not just your feed." : "Pick up where your career left off."}
       </p>
+      {notice && <p className="mt-3 rounded-xl bg-secondary px-3 py-2 text-sm font-medium">{notice}</p>}
       <form onSubmit={handleSubmit(onSubmit)} className="mt-5 grid gap-3" noValidate>
         {mode === "signup" && (
           <div>
