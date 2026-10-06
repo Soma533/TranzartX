@@ -36,7 +36,7 @@ export async function GET(request: Request) {
       if (error) throw error;
       return Response.json({ results: data });
     }
-    const { data, error } = await supabase.from("artworks").select("*, profiles!inner(name)").ilike("title", `%${q}%`).limit(24);
+    const { data, error } = await supabase.from("artworks").select("*, profiles!inner(id,name)").ilike("title", `%${q}%`).limit(24);
     if (error) throw error;
     return Response.json({ results: data });
   } catch (err) {
