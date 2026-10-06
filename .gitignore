@@ -7,10 +7,12 @@ out/
 supabase/.branches
 supabase/.temp
 
-# env
+# env — real secrets stay on machines, never in git.
+# Only .env.example (placeholders) is tracked, enforced by the negation below.
 .env
 .env.local
 .env*.local
+!.env.example
 
 # logs / os
 *.log
