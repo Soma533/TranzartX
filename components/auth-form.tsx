@@ -15,8 +15,18 @@ const loginSchema = z.object({
 });
 const signupSchema = loginSchema.extend({
   name: z.string().min(2, "Enter your name").max(80),
+  role: z.enum(["ARTIST", "COLLECTOR", "GALLERY", "CURATOR", "ORG", "AESTHETE"]).default("ARTIST"),
   password: z.string().min(8, "Password needs at least 8 characters").max(128)
 });
+
+const ROLE_LABELS: { value: string; label: string }[] = [
+  { value: "ARTIST", label: "Artist — showcase and sell my work" },
+  { value: "COLLECTOR", label: "Collector — discover and buy art" },
+  { value: "GALLERY", label: "Gallery" },
+  { value: "CURATOR", label: "Curator" },
+  { value: "ORG", label: "Art organization" },
+  { value: "AESTHETE", label: "Aesthete — here for the love of art" }
+];
 
 function friendly(message: string): string {
   if (/invalid login|invalid.*credentials/i.test(message)) return "Wrong email or password. Try again or reset it below.";
@@ -30,7 +40,7 @@ export function AuthForm({ mode, notice }: { mode: "login" | "signup"; notice?: 
   const [serverMsg, setServerMsg] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
   const schema = mode === "signup" ? signupSchema : loginSchema;
-  type FormValues = { email: string; password: string; name?: string };
+  type FormValues = { email: string; password: string; name?: string; role?: string };
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema) as never
   });
@@ -48,7 +58,7 @@ export function AuthForm({ mode, notice }: { mode: "login" | "signup"; notice?: 
       const supabase = createClient();
       if (mode === "signup") {
         const v = values as z.infer<typeof signupSchema>;
-        const { error } = await supabase.auth.signUp({ email: v.email, password: v.password, options: { data: { name: v.name } } });
+        const { error } = await supabase.auth.signUp({ email: v.email, password: v.password, options: { data: { name: v.name, role: v.role ?? "ARTIST" } } });
         if (error) throw error;
         setServerMsg("Account created — check your email to confirm, then complete onboarding.");
       } else {
@@ -74,17 +84,24 @@ export function AuthForm({ mode, notice }: { mode: "login" | "signup"; notice?: 
   return (
     <div className="mx-auto max-w-md rounded-3xl border bg-white p-8">
       <p className="text-sm uppercase tracking-widest text-primary">TranzartX</p>
-      <h1 className="mt-1 text-2xl font-bold">{mode === "signup" ? "Join as an artist" : "Welcome back"}</h1>
+      <h1 className="mt-1 text-2xl font-bold">{mode === "signup" ? "Join TranzartX" : "Welcome back"}</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         {mode === "signup" ? "Build your career, not just your feed." : "Pick up where your career left off."}
       </p>
       {notice && <p className="mt-3 rounded-xl bg-secondary px-3 py-2 text-sm font-medium">{notice}</p>}
       <form onSubmit={handleSubmit(onSubmit)} className="mt-5 grid gap-3" noValidate>
         {mode === "signup" && (
-          <div>
-            <Input placeholder="Full name" {...register("name")} aria-invalid={Boolean(errors.name)} />
-            {errors.name && <p className="mt-1 text-xs text-destructive">{errors.name.message}</p>}
-          </div>
+          <>
+            <div>
+              <Input placeholder="Full name" {...register("name")} aria-invalid={Boolean(errors.name)} />
+              {errors.name && <p className="mt-1 text-xs text-destructive">{errors.name.message}</p>}
+            </div>
+            <div>
+              <select {...register("role")} className="w-full rounded-xl border border-border bg-white px-3 py-2 text-sm" aria-label="I am joining as">
+                {ROLE_LABELS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+              </select>
+            </div>
+          </>
         )}
         <div>
           <Input placeholder="Email" type="email" autoComplete="email" {...register("email")} aria-invalid={Boolean(errors.email)} />

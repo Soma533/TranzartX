@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const profileSchema = z.object({
   name: z.string().min(2).max(80),
-  role: z.enum(["ARTIST", "COLLECTOR", "GALLERY", "CURATOR", "ORG"]).default("ARTIST"),
+  role: z.enum(["ARTIST", "COLLECTOR", "GALLERY", "CURATOR", "ORG", "AESTHETE"]).default("ARTIST"),
   location_country: z.string().max(60).optional().nullable(),
   location_city: z.string().max(60).optional().nullable(),
   disciplines: z.array(z.string().max(40)).max(10).default([]),

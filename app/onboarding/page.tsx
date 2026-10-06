@@ -48,6 +48,7 @@ export default function OnboardingPage() {
             <option value="GALLERY">Gallery</option>
             <option value="CURATOR">Curator</option>
             <option value="ORG">Art organization</option>
+            <option value="AESTHETE">Aesthete</option>
           </select>
           <Input placeholder="Country (e.g. Nigeria)" value={country} onChange={(e) => setCountry(e.target.value)} />
           <Input placeholder="Discipline (e.g. Painting)" value={discipline} onChange={(e) => setDiscipline(e.target.value)} />

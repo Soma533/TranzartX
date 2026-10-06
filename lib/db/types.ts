@@ -1,6 +1,6 @@
 /** Shared domain types — mirrors Supabase tables (see supabase/migrations). */
 
-export type UserRole = "ARTIST" | "COLLECTOR" | "GALLERY" | "CURATOR" | "ORG" | "ADMIN";
+export type UserRole = "ARTIST" | "COLLECTOR" | "GALLERY" | "CURATOR" | "ORG" | "AESTHETE" | "ADMIN";
 
 export type GoalType =
   | "FIRST_EXHIBITION"
