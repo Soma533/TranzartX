@@ -8,7 +8,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const guard = await requireUser();
   if ("error" in guard) return guard.error;
   const { supabase, profileId } = guard;
-  const { data: opp } = await supabase.from("opportunities").select("*, profiles!inner(id,name)").eq("id", id).single();
+  const { data: opp } = await supabase.from("opportunities").select("*, profiles!inner!opportunities_org_id_fkey(id,name)").eq("id", id).single();
   if (!opp) return apiError("NOT_FOUND", "Opportunity not found", 404);
   const o = opp as { disciplines?: string[]; location?: string | null };
   const { data: me } = await supabase.from("profiles").select("disciplines,location_country").eq("id", profileId ?? "").maybeSingle();

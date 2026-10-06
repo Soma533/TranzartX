@@ -7,7 +7,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const { id } = await ctx.params;
   // Public marketplace page — no login required (public RLS read).
   const supabase = await createServerSupabase();
-  const { data, error } = await supabase.from("artworks").select("*, profiles!inner(id,name,avatar_url)").eq("id", id).single();
+  const { data, error } = await supabase.from("artworks").select("*, profiles!inner!artworks_artist_id_fkey(id,name,avatar_url)").eq("id", id).single();
   if (error || !data) return apiError("NOT_FOUND", "Artwork not found", 404);
   await supabase.from("analytics_events").insert({ event: "artwork_view", target_id: id }).then(() => null, () => null);
   return Response.json({ artwork: data });
