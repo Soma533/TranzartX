@@ -8,6 +8,7 @@ export default function OnboardingPage() {
   const [name, setName] = useState("");
   const [country, setCountry] = useState("");
   const [discipline, setDiscipline] = useState("");
+  const [role, setRole] = useState("ARTIST");
   const [raw, setRaw] = useState("");
   const [draft, setDraft] = useState("");
   const [msg, setMsg] = useState("");
@@ -15,7 +16,7 @@ export default function OnboardingPage() {
   async function save() {
     const r = await fetch("/api/profiles/me", {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, location_country: country, disciplines: discipline ? [discipline] : [], bio: draft || undefined })
+      body: JSON.stringify({ name, role, location_country: country, disciplines: discipline ? [discipline] : [], bio: draft || undefined })
     });
     if (r.ok) {
       setMsg("Profile saved — welcome to TranzartX.");
@@ -41,6 +42,13 @@ export default function OnboardingPage() {
       <Card>
         <div className="grid gap-2">
           <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+          <select value={role} onChange={(e) => setRole(e.target.value)} className="rounded-xl border border-border bg-white px-3 py-2 text-sm" aria-label="I am joining as">
+            <option value="ARTIST">Artist</option>
+            <option value="COLLECTOR">Collector</option>
+            <option value="GALLERY">Gallery</option>
+            <option value="CURATOR">Curator</option>
+            <option value="ORG">Art organization</option>
+          </select>
           <Input placeholder="Country (e.g. Nigeria)" value={country} onChange={(e) => setCountry(e.target.value)} />
           <Input placeholder="Discipline (e.g. Painting)" value={discipline} onChange={(e) => setDiscipline(e.target.value)} />
         </div>

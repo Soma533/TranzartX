@@ -1,6 +1,7 @@
 "use client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ function Skeleton() {
 export default function PortfolioPage() {
   const { push } = useToast();
   const qc = useQueryClient();
+  const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const { data, isLoading, isError } = useQuery({
     queryKey: ["artworks"],
@@ -63,6 +65,11 @@ export default function PortfolioPage() {
       });
       if (!r.ok) {
         const j = await r.json().catch(() => null);
+        if (j?.error?.code === "NO_PROFILE") {
+          push("Finish quick onboarding first");
+          router.push("/onboarding");
+          return;
+        }
         throw new Error(j?.error?.message ?? "Could not save artwork");
       }
       push("Artwork published to your portfolio");
