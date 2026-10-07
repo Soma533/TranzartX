@@ -1,4 +1,5 @@
 import { requireUser } from "@/services/auth-guard";
+import { createAdminSupabase } from "@/lib/supabase/admin";
 import { apiError } from "@/lib/logger";
 
 export async function GET() {
@@ -27,7 +28,9 @@ export async function POST(request: Request) {
     const { error } = await supabase.from("follows").upsert({ follower_id: profileId, following_id: body.targetId });
     if (error) return apiError("DB", error.message, 500);
     if (targetUser) {
-      await supabase.from("notifications").insert({
+      // Cross-user write — service role bypasses owner-only notification RLS.
+      const admin = createAdminSupabase();
+      await admin.from("notifications").insert({
         user_id: targetUser.user_id, type: "follow",
         title: "New follower",
         body: `${myName} started following you.`,
@@ -45,7 +48,8 @@ export async function POST(request: Request) {
     const { error } = await supabase.from("connections").insert({ requester_id: profileId, receiver_id: body.targetId });
     if (error) return apiError("DB", error.message, 500);
     if (targetUser) {
-      await supabase.from("notifications").insert({
+      const admin = createAdminSupabase();
+      await admin.from("notifications").insert({
         user_id: targetUser.user_id, type: "connection",
         title: "New connection request",
         body: `${myName} wants to connect professionally.`,

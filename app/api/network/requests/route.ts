@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { requireUser } from "@/services/auth-guard";
+import { createAdminSupabase } from "@/lib/supabase/admin";
 import { apiError } from "@/lib/logger";
 
 const reviewSchema = z.object({ connection_id: z.string().uuid(), action: z.enum(["accept", "decline"]) });
@@ -41,7 +42,8 @@ export async function PATCH(request: Request) {
     const owner = them as { user_id: string } | null;
     const self = me as { name: string } | null;
     if (owner) {
-      await supabase.from("notifications").insert({
+      const admin = createAdminSupabase();
+      await admin.from("notifications").insert({
         user_id: owner.user_id, type: "connection",
         title: "Connection accepted",
         body: `${self?.name ?? "Someone"} accepted your connection request.`,

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { requireUser } from "@/services/auth-guard";
+import { createAdminSupabase } from "@/lib/supabase/admin";
 import { apiError } from "@/lib/logger";
 
 const saveSchema = z.object({ artwork_id: z.string().uuid() });
@@ -20,7 +21,8 @@ export async function POST(request: Request) {
   const { data: artistProfile } = await supabase.from("profiles").select("user_id,notify_saves").eq("id", artist.artist_id).maybeSingle();
   const prefs = artistProfile as { user_id: string; notify_saves: boolean } | null;
   if (prefs?.notify_saves !== false && prefs) {
-    await supabase.from("notifications").insert({
+    const admin = createAdminSupabase();
+    await admin.from("notifications").insert({
       user_id: prefs.user_id,
       type: "artwork_save",
       title: "Someone saved your artwork",

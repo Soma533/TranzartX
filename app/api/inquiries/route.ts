@@ -28,7 +28,6 @@ export async function POST(request: Request) {
   if (!clean) return apiError("VALIDATION", "Empty message", 422);
   const { data: art } = await supabase.from("artworks").select("artist_id,title").eq("id", parsed.data.artwork_id).single();
   if (!art) return apiError("NOT_FOUND", "Artwork not found", 404);
-  if (!art) return apiError("NOT_FOUND", "Artwork not found", 404);
   const { data, error } = await supabase.from("inquiries").insert({
     artwork_id: parsed.data.artwork_id, from_id: profileId,
     to_artist_id: (art as { artist_id: string }).artist_id, message: clean
@@ -40,7 +39,8 @@ export async function POST(request: Request) {
   const { data: artistProfile } = await supabase.from("profiles").select("user_id,name").eq("id", artistId).maybeSingle();
   const owner = artistProfile as { user_id: string; name: string } | null;
   if (owner) {
-    await supabase.from("notifications").insert({
+    const adminNotify = createAdminSupabase();
+    await adminNotify.from("notifications").insert({
       user_id: owner.user_id,
       type: "inquiry",
       title: "New purchase inquiry",

@@ -1,5 +1,6 @@
 import { messageSchema } from "@/schemas";
 import { requireUser } from "@/services/auth-guard";
+import { createAdminSupabase } from "@/lib/supabase/admin";
 import { apiError } from "@/lib/logger";
 
 export async function GET(request: Request) {
@@ -52,7 +53,10 @@ export async function POST(request: Request) {
         body: `${(me as { name: string } | null)?.name ?? "Someone"} sent you a message.`,
         link: "/messages"
       }));
-      if (notes.length > 0) await supabase.from("notifications").insert(notes);
+      if (notes.length > 0) {
+        const admin = createAdminSupabase();
+        await admin.from("notifications").insert(notes);
+      }
     }
   } catch { /* notifications optional */ }
   return Response.json({ message: data }, { status: 201 });
