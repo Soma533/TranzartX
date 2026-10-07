@@ -29,12 +29,13 @@ export async function POST(request: Request) {
     if (error) return apiError("DB", error.message, 500);
     if (targetUser) {
       // Cross-user write — service role bypasses owner-only notification RLS.
+      // Store follower profile id in link so UI can offer Follow back.
       const admin = createAdminSupabase();
       await admin.from("notifications").insert({
-        user_id: targetUser.user_id, type: "follow",
+        user_id: targetUser.user_id, actor_id: profileId, type: "follow",
         title: "New follower",
         body: `${myName} started following you.`,
-        link: "/network"
+        link: `/network?followBack=${profileId}`
       });
     }
     return Response.json({ ok: true, following: true });
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
     if (targetUser) {
       const admin = createAdminSupabase();
       await admin.from("notifications").insert({
-        user_id: targetUser.user_id, type: "connection",
+        user_id: targetUser.user_id, actor_id: profileId, type: "connection",
         title: "New connection request",
         body: `${myName} wants to connect professionally.`,
         link: "/network"

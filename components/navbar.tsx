@@ -54,26 +54,33 @@ export function Navbar() {
             </Link>
           ))}
         </nav>
-        <div className="hidden items-center gap-2 text-sm lg:flex">
-          {authed && <NotificationBell />}
-          <Link href="/settings" className="rounded-xl border px-3 py-1.5">Settings</Link>
-          {account === null ? (
-            <span className="px-3 py-1.5 text-muted-foreground">…</span>
-          ) : authed ? (
-            <button onClick={signOut} className="rounded-xl border px-3 py-1.5">Sign out</button>
-          ) : (
-            <>
-              <Link href="/login" className="rounded-xl border px-3 py-1.5">Log in</Link>
-              <Link href="/signup" className="rounded-xl bg-primary px-3 py-1.5 text-white">Join</Link>
-            </>
-          )}
+        <div className="flex items-center gap-2 text-sm">
+          {account !== false && <NotificationBell />}
+          <div className="hidden items-center gap-2 lg:flex">
+            <Link href="/settings" className="rounded-xl border px-3 py-1.5">Settings</Link>
+            {account === null ? (
+              <span className="px-3 py-1.5 text-muted-foreground">…</span>
+            ) : authed ? (
+              <button onClick={signOut} className="rounded-xl border px-3 py-1.5">Sign out</button>
+            ) : (
+              <>
+                <Link href="/login" className="rounded-xl border px-3 py-1.5">Log in</Link>
+                <Link href="/signup" className="rounded-xl bg-primary px-3 py-1.5 text-white">Join</Link>
+              </>
+            )}
+          </div>
+          <button className="rounded-xl border px-3 py-1.5 lg:hidden" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label="Menu">
+            {open ? "Close" : "Menu"}
+          </button>
         </div>
-        <button className="rounded-xl border px-3 py-1.5 text-sm lg:hidden" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label="Menu">
-          {open ? "Close" : "Menu"}
-        </button>
       </div>
       {open && (
         <nav className="grid gap-1 border-t px-4 py-3 text-sm lg:hidden">
+          {account !== false && (
+            <Link href="/notifications" onClick={() => setOpen(false)} className="rounded-lg px-2 py-1.5 font-medium text-foreground hover:bg-secondary">
+              🔔 Notifications
+            </Link>
+          )}
           {links.map((l) => (
             <Link key={l.href} href={l.href} onClick={() => setOpen(false)} className="rounded-lg px-2 py-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground">
               {l.label}

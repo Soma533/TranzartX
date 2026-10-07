@@ -24,6 +24,7 @@ export async function POST(request: Request) {
     const admin = createAdminSupabase();
     await admin.from("notifications").insert({
       user_id: prefs.user_id,
+      actor_id: profileId,
       type: "artwork_save",
       title: "Someone saved your artwork",
       body: `${artist.title} was saved by a collector.`,

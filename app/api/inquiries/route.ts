@@ -42,6 +42,7 @@ export async function POST(request: Request) {
     const adminNotify = createAdminSupabase();
     await adminNotify.from("notifications").insert({
       user_id: owner.user_id,
+      actor_id: profileId,
       type: "inquiry",
       title: "New purchase inquiry",
       body: "A collector asked about one of your artworks.",

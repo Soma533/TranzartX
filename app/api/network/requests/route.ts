@@ -44,7 +44,7 @@ export async function PATCH(request: Request) {
     if (owner) {
       const admin = createAdminSupabase();
       await admin.from("notifications").insert({
-        user_id: owner.user_id, type: "connection",
+        user_id: owner.user_id, actor_id: profileId, type: "connection",
         title: "Connection accepted",
         body: `${self?.name ?? "Someone"} accepted your connection request.`,
         link: "/network"

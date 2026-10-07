@@ -19,7 +19,8 @@ export async function POST(request: Request) {
   if ("error" in guard) return guard.error;
   const { supabase, profileId } = guard;
   const parsed = startSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success || !profileId) return apiError("VALIDATION", "targetId required", 422);
+  if (!parsed.success) return apiError("VALIDATION", "targetId required", 422);
+  if (!profileId) return apiError("VALIDATION", "Create your profile first", 422);
   if (parsed.data.targetId === profileId) return apiError("VALIDATION", "Cannot message yourself", 422);
 
   const { data: mine } = await supabase.from("conversation_participants").select("conversation_id").eq("profile_id", profileId);

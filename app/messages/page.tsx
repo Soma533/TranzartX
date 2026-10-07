@@ -19,6 +19,8 @@ function MessagesInner() {
   const [active, setActive] = useState<string | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [draft, setDraft] = useState("");
+  const [starting, setStarting] = useState(false);
+  const [sending, setSending] = useState(false);
   const { push } = useToast();
 
   async function loadList(select?: string) {
@@ -27,47 +29,109 @@ function MessagesInner() {
     const j = await r.json().catch(() => null);
     const list = j?.conversations ?? [];
     setConversations(list);
-    if (select) setActive(select);
-    else if (list[0] && !active) setActive(list[0].conversation_id);
+    // Avoid the stale-closure `!active` check: prefer explicit select, else first.
+    setActive((prev) => select ?? prev ?? list[0]?.conversation_id ?? null);
+  }
+
+  async function ensureConversation(targetId: string): Promise<string | null> {
+    try {
+      const r = await fetch("/api/messages/conversations", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetId })
+      });
+      if (r.status === 401) { push("Log in to message"); router.replace("/login"); return null; }
+      const j = await r.json().catch(() => null);
+      if (j?.conversation_id) return j.conversation_id as string;
+      push(j?.error?.message ?? "Could not start conversation");
+      return null;
+    } catch {
+      push("Could not start conversation");
+      return null;
+    }
   }
 
   useEffect(() => {
     // Deep link ?to=<profileId> starts (or reuses) a conversation — PRD §18.
-    if (to) {
-      fetch("/api/messages/conversations", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetId: to })
-      })
-        .then((r) => {
-          if (r.status === 401) { push("Log in to message"); router.replace("/login"); return null; }
-          return r.json();
-        })
-        .then((j) => { if (j?.conversation_id) loadList(j.conversation_id); else if (j) push("Could not start conversation"); })
-        .catch(() => push("Could not start conversation"));
-    } else {
-      loadList();
+    let cancelled = false;
+    async function boot() {
+      if (to) {
+        setStarting(true);
+        const cid = await ensureConversation(to);
+        if (cancelled) return;
+        if (cid) await loadList(cid);
+        else await loadList();
+        if (!cancelled) setStarting(false);
+      } else {
+        await loadList();
+      }
     }
+    void boot();
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [to]);
 
   useEffect(() => {
     if (!active) return;
-    fetch(`/api/messages?conversation=${active}`).then((r) => r.json()).then((j) => setMessages(j.messages ?? [])).catch(() => null);
+    let cancelled = false;
+    fetch(`/api/messages?conversation=${active}`)
+      .then((r) => {
+        if (r.status === 401) { router.replace("/login"); return null; }
+        return r.json();
+      })
+      .then((j) => { if (!cancelled && j) setMessages(j.messages ?? []); })
+      .catch(() => null);
     const supabase = createClient();
     const ch = supabase.channel(`msg:${active}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${active}` }, (payload) => {
-        setMessages((m) => [...m, payload.new as Msg]);
+        const incoming = payload.new as Msg;
+        // Dedupe against the optimistic append in send().
+        setMessages((m) => (m.some((x) => x.id === incoming.id) ? m : [...m, incoming]));
       })
       .subscribe();
-    return () => { void supabase.removeChannel(ch); };
+    return () => { cancelled = true; void supabase.removeChannel(ch); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
   async function send() {
-    if (!active || !draft.trim()) return;
-    const r = await fetch("/api/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: active, body: draft }) });
-    if (!r.ok) push("Send failed — sign in first");
-    setDraft("");
+    if (!draft.trim() || sending || starting) return;
+    // Lazily (re)create the conversation so Send never silently no-ops when
+    // the deep-link start failed or hasn't finished yet.
+    let cid = active;
+    if (!cid) {
+      if (!to) { push("Select or start a conversation first"); return; }
+      setStarting(true);
+      try {
+        cid = await ensureConversation(to);
+      } finally {
+        setStarting(false);
+      }
+      if (!cid) return;
+      setActive(cid);
+    }
+    const body = draft.trim();
+    setSending(true);
+    try {
+      const r = await fetch("/api/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: cid, body }) });
+      const j = await r.json().catch(() => null);
+      if (!r.ok) {
+        if (r.status === 401) router.replace("/login");
+        push(j?.error?.message ?? "Send failed — sign in first");
+        return;
+      }
+      // Optimistic (server-confirmed) append: UI updates even if Realtime is off.
+      if (j?.message) {
+        const saved = j.message as Msg;
+        setMessages((m) => (m.some((x) => x.id === saved.id) ? m : [...m, saved]));
+      }
+      setDraft("");
+    } catch {
+      push("Send failed — check your connection");
+    } finally {
+      setSending(false);
+    }
   }
+
+  const sendDisabled = !draft.trim() || sending || starting;
 
   return (
     <div className="grid gap-4 md:grid-cols-3">
@@ -83,10 +147,27 @@ function MessagesInner() {
       <Card className="md:col-span-2">
         <div className="grid gap-2">
           {messages.map((m) => <p key={m.id} className="rounded-lg bg-secondary px-3 py-2 text-sm">{m.body}</p>)}
-          {!active && <p className="text-sm text-muted-foreground">Select or start a conversation.</p>}
+          {!active && (
+            <p className="text-sm text-muted-foreground">
+              {starting ? "Starting conversation…" : "Select or start a conversation."}
+            </p>
+          )}
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Write a professional message…" />
-            <Button onClick={send} className="sm:shrink-0">Send</Button>
+            <Input
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }}
+              placeholder={active ? "Write a professional message…" : to ? "Starting conversation — type, then Send…" : "Select a conversation first…"}
+            />
+            <Button
+              type="button"
+              onClick={send}
+              disabled={sendDisabled}
+              title={sendDisabled && !draft.trim() ? "Type a message first" : !active && !to ? "Select a conversation first" : "Send message"}
+              className="sm:shrink-0"
+            >
+              {sending ? "Sending…" : starting ? "Starting…" : "Send"}
+            </Button>
           </div>
         </div>
       </Card>

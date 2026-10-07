@@ -23,6 +23,7 @@ export async function POST(request: Request) {
   if (body.title) {
     const { error } = await supabase.from("notifications").insert({
       user_id: user.id,
+      actor_id: profileId,
       type: body.event.slice(0, 60),
       title: body.title.slice(0, 140),
       body: body.body?.slice(0, 500) ?? null,
@@ -30,5 +31,18 @@ export async function POST(request: Request) {
     });
     if (error) return apiError("DB", error.message, 500);
   }
+  return Response.json({ ok: true });
+}
+
+/** Mark notifications read. No body = mark all unread as read (inbox opened). */
+export async function PATCH(request: Request) {
+  const guard = await requireUser();
+  if ("error" in guard) return guard.error;
+  const { supabase, user } = guard;
+  const body = (await request.json().catch(() => null)) as { id?: string } | null;
+  let query = supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("user_id", user.id).is("read_at", null);
+  if (body?.id) query = query.eq("id", body.id);
+  const { error } = await query;
+  if (error) return apiError("DB", error.message, 500);
   return Response.json({ ok: true });
 }

@@ -35,6 +35,7 @@ export async function POST(request: Request) {
   const { supabase, profileId } = guard;
   const parsed = messageSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return apiError("VALIDATION", parsed.error.message, 422);
+  if (!profileId) return apiError("VALIDATION", "Create your profile first", 422);
   const { data, error } = await supabase.from("messages").insert({ ...parsed.data, sender_id: profileId }).select().single();
   if (error) return apiError("DB", error.message, 500);
   // Notify the other participants (best-effort, never fails the send).
@@ -48,6 +49,7 @@ export async function POST(request: Request) {
       const { data: owners } = await supabase.from("profiles").select("id,user_id").in("id", others.map((o) => o.profile_id));
       const notes = ((owners as { id: string; user_id: string }[] | null) ?? []).map((o) => ({
         user_id: o.user_id,
+        actor_id: profileId,
         type: "message",
         title: "New message",
         body: `${(me as { name: string } | null)?.name ?? "Someone"} sent you a message.`,
