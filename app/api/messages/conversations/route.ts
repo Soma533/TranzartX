@@ -35,9 +35,11 @@ export async function POST(request: Request) {
     if (hit) return Response.json({ conversation_id: hit.conversation_id, reused: true });
   }
 
-  const { data: conv, error: convErr } = await supabase.from("conversations").insert({}).select().single();
-  if (convErr || !conv) return apiError("DB", convErr?.message ?? "create failed", 500);
-  const cid = (conv as { id: string }).id;
+  // Generate the id up front: the participant-only SELECT policy hides a fresh
+  // parent row until participants exist, so insert-then-select would 500 here.
+  const cid = crypto.randomUUID();
+  const { error: convErr } = await supabase.from("conversations").insert({ id: cid });
+  if (convErr) return apiError("DB", convErr.message, 500);
   const { error: partErr } = await supabase.from("conversation_participants").insert([
     { conversation_id: cid, profile_id: profileId },
     { conversation_id: cid, profile_id: parsed.data.targetId }

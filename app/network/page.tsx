@@ -19,13 +19,17 @@ export default function NetworkPage() {
   const [requested, setRequested] = useState<Set<string>>(new Set());
   const [q, setQ] = useState("");
   const [searching, setSearching] = useState(false);
+  const [myId, setMyId] = useState<string | null>(null);
 
   async function load() {
+    const me = await fetch("/api/profiles/me").then((r) => r.json()).catch(() => null);
+    if (me?.profile) setMyId(me.profile.id as string);
     const j = await fetch("/api/network").then((r) => {
       if (r.status === 401) { router.replace("/login"); return null; }
       return r.json();
     }).catch(() => null);
-    setPeople(j?.suggestions ?? []);
+    const all = (j?.suggestions ?? []) as Person[];
+    setPeople(me?.profile ? all.filter((p) => p.id !== me.profile.id) : all);
     const t = await fetch("/api/network/requests").then((r) => r.json()).catch(() => null);
     setRequests(t?.requests ?? []);
   }
@@ -42,14 +46,19 @@ export default function NetworkPage() {
     if (action === "follow" && r.ok) {
       setFollowing((s) => new Set(s).add(targetId));
       push("Following — they'll get a notification");
+    } else if (action === "follow") {
+      const j = await r.json().catch(() => null);
+      push(j?.error?.message ?? "Follow failed");
     } else if (action === "unfollow" && r.ok) {
       setFollowing((s) => { const n = new Set(s); n.delete(targetId); return n; });
     } else if (action === "connect") {
-      if (r.status === 409) push("Already requested or connected");
-      else if (r.ok) {
+      if (r.ok) {
         setRequested((s) => new Set(s).add(targetId));
         push("Request sent — they'll be notified");
-      } else push("Request failed");
+      } else {
+        const j = await r.json().catch(() => null);
+        push(j?.error?.message ?? "Request failed");
+      }
     }
   }
 
@@ -71,8 +80,9 @@ export default function NetworkPage() {
       const r = await fetch(`/api/search?q=${encodeURIComponent(q)}&type=people`);
       if (r.status === 401) { router.replace("/login"); return; }
       const j = await r.json().catch(() => null);
-      setPeople(j?.results ?? []);
-      if ((j?.results ?? []).length === 0) push("No people found — try another name");
+      const found = ((j?.results ?? []) as Person[]).filter((p) => p.id !== myId);
+      setPeople(found);
+      if (found.length === 0) push("No people found — try another name");
     } finally {
       setSearching(false);
     }
