@@ -30,6 +30,7 @@ export function Footer() {
           <p className="text-sm font-semibold">Account</p>
           <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
             <li><Link href="/settings" className="hover:text-foreground">Settings</Link></li>
+            <li><Link href="/privacy" className="hover:text-foreground">Privacy</Link></li>
             <li><Link href="/login" className="hover:text-foreground">Log in</Link></li>
             <li><Link href="/signup" className="hover:text-foreground">Join</Link></li>
           </ul>
