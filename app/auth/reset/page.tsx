@@ -17,6 +17,7 @@ export default function ResetPasswordPage() {
   const [link, setLink] = useState<LinkState>("checking");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -118,7 +119,17 @@ export default function ResetPasswordPage() {
       )}
       {link === "ready" && (
         <form onSubmit={submit} className="mt-4 grid gap-3">
-          <Input placeholder="New password (min 8 characters)" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <div className="relative">
+            <Input placeholder="New password (min 8 characters)" type={showPassword ? "text" : "password"} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required className="pr-16" />
+            <button
+              type="button"
+              onClick={() => setShowPassword((s) => !s)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+            >
+              {showPassword ? "Hide" : "Show"}
+            </button>
+          </div>
           <Button type="submit" disabled={busy}>{busy ? "Saving…" : "Save new password"}</Button>
         </form>
       )}

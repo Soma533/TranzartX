@@ -39,6 +39,7 @@ export function AuthForm({ mode, notice }: { mode: "login" | "signup"; notice?: 
   const router = useRouter();
   const [serverMsg, setServerMsg] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
   const schema = mode === "signup" ? signupSchema : loginSchema;
   type FormValues = { email: string; password: string; name?: string; role?: string };
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({
@@ -108,7 +109,17 @@ export function AuthForm({ mode, notice }: { mode: "login" | "signup"; notice?: 
           {errors.email && <p className="mt-1 text-xs text-destructive">{errors.email.message}</p>}
         </div>
         <div>
-          <Input placeholder="Password" type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} {...register("password")} aria-invalid={Boolean(errors.password)} />
+          <div className="relative">
+            <Input placeholder="Password" type={showPassword ? "text" : "password"} autoComplete={mode === "signup" ? "new-password" : "current-password"} {...register("password")} aria-invalid={Boolean(errors.password)} className="pr-16" />
+            <button
+              type="button"
+              onClick={() => setShowPassword((s) => !s)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+            >
+              {showPassword ? "Hide" : "Show"}
+            </button>
+          </div>
           {errors.password && <p className="mt-1 text-xs text-destructive">{errors.password.message}</p>}
         </div>
         <Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Please wait…" : mode === "signup" ? "Create account" : "Log in"}</Button>
