@@ -24,6 +24,16 @@ export async function GET(request: Request) {
       if (error) throw error;
       return Response.json({ results: data });
     }
+    if (type === "people") {
+      // Networking search across every role (PRD §18).
+      let query = supabase.from("profiles").select("id,name,role,avatar_url,disciplines,location_country").ilike("name", `%${q}%`).limit(24);
+      const role = params.get("role") ?? "";
+      if (role) query = query.eq("role", role);
+      if (discipline) query = query.overlaps("disciplines", [discipline]);
+      const { data, error } = await query;
+      if (error) throw error;
+      return Response.json({ results: data });
+    }
     if (type === "opportunities") {
       let query = supabase.from("opportunities").select("*").ilike("title", `%${q}%`).limit(24);
       if (discipline) query = query.overlaps("disciplines", [discipline]);

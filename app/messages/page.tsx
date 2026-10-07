@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -11,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 interface Msg { id: string; body: string; sender_id: string; created_at: string; }
 
 function MessagesInner() {
+  const router = useRouter();
   const search = useSearchParams();
   const to = search.get("to");
   const [conversations, setConversations] = useState<{ conversation_id: string; with?: { id: string; name: string } | null }[]>([]);
@@ -20,7 +22,9 @@ function MessagesInner() {
   const { push } = useToast();
 
   async function loadList(select?: string) {
-    const j = await fetch("/api/messages").then((r) => r.json()).catch(() => null);
+    const r = await fetch("/api/messages");
+    if (r.status === 401) { router.replace("/login"); return; }
+    const j = await r.json().catch(() => null);
     const list = j?.conversations ?? [];
     setConversations(list);
     if (select) setActive(select);
@@ -34,8 +38,11 @@ function MessagesInner() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ targetId: to })
       })
-        .then((r) => r.json())
-        .then((j) => { if (j.conversation_id) loadList(j.conversation_id); else push("Could not start conversation"); })
+        .then((r) => {
+          if (r.status === 401) { push("Log in to message"); router.replace("/login"); return null; }
+          return r.json();
+        })
+        .then((j) => { if (j?.conversation_id) loadList(j.conversation_id); else if (j) push("Could not start conversation"); })
         .catch(() => push("Could not start conversation"));
     } else {
       loadList();
