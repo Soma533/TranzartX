@@ -14,7 +14,7 @@ jobs:
         run: |
           CODE=$(curl -sS -o /tmp/deadlines.json -w "%{http_code}" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            https://tranzartx.netlify.app/api/cron/deadlines)
+            https://tranzartx.vercel.app/api/cron/deadlines)
           echo "HTTP $CODE"
           cat /tmp/deadlines.json
           test "$CODE" = "200"
