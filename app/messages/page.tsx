@@ -167,10 +167,25 @@ function MessagesInner() {
       <Card className="md:col-span-2">
         <div className="grid gap-2">
           {messages.map((m) => (
-            <p key={m.id} className="rounded-lg bg-secondary px-3 py-2 text-sm">
-              {m.body}
-              <Ticks m={m} mine={myId !== null && m.sender_id === myId} />
-            </p>
+            <div
+              key={m.id}
+              className={`flex ${myId !== null && m.sender_id === myId ? 'justify-end' : 'justify-start'}`}
+            >
+              <div
+                className={`flex max-w-[70%] ${myId !== null && m.sender_id === myId ? 'flex-row-reverse' : 'flex-row'}`}
+              >
+                <p
+                  className={`rounded-2xl px-4 py-2 text-sm ${
+                    myId !== null && m.sender_id === myId
+                      ? 'bg-primary text-white rounded-bl-none'
+                      : 'bg-secondary text-foreground rounded-br-none'
+                  }`}
+                >
+                  {m.body}
+                  <Ticks m={m} mine={myId !== null && m.sender_id === myId} />
+                </p>
+              </div>
+            </div>
           ))}
           {!active && (
             <p className="text-sm text-muted-foreground">
