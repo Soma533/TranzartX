@@ -9,7 +9,15 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
-interface Msg { id: string; body: string; sender_id: string; created_at: string; }
+interface Msg { id: string; body: string; sender_id: string; created_at: string; delivered_at: string | null; read_at: string | null; }
+
+/** WhatsApp-style ticks: ✓ sent, ✓✓ delivered, blue ✓✓ read. */
+function Ticks({ m, mine }: { m: Msg; mine: boolean }) {
+  if (!mine) return null;
+  if (m.read_at) return <span className="ml-2 text-sky-500">✓✓</span>;
+  if (m.delivered_at) return <span className="ml-2 text-muted-foreground">✓✓</span>;
+  return <span className="ml-2 text-muted-foreground">✓</span>;
+}
 
 function MessagesInner() {
   const router = useRouter();
@@ -21,7 +29,14 @@ function MessagesInner() {
   const [draft, setDraft] = useState("");
   const [starting, setStarting] = useState(false);
   const [sending, setSending] = useState(false);
+  const [myId, setMyId] = useState<string | null>(null);
   const { push } = useToast();
+
+  useEffect(() => {
+    fetch("/api/profiles/me").then((r) => r.json()).then((j) => {
+      if (j.profile) setMyId(j.profile.id as string);
+    }).catch(() => null);
+  }, []);
 
   async function loadList(select?: string) {
     const r = await fetch("/api/messages");
@@ -87,6 +102,11 @@ function MessagesInner() {
         // Dedupe against the optimistic append in send().
         setMessages((m) => (m.some((x) => x.id === incoming.id) ? m : [...m, incoming]));
       })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `conversation_id=eq.${active}` }, (payload) => {
+        // Tick flips (delivered/read) arrive live without refresh.
+        const updated = payload.new as Msg;
+        setMessages((m) => m.map((x) => (x.id === updated.id ? { ...x, delivered_at: updated.delivered_at, read_at: updated.read_at } : x)));
+      })
       .subscribe();
     return () => { cancelled = true; void supabase.removeChannel(ch); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -146,7 +166,12 @@ function MessagesInner() {
       </Card>
       <Card className="md:col-span-2">
         <div className="grid gap-2">
-          {messages.map((m) => <p key={m.id} className="rounded-lg bg-secondary px-3 py-2 text-sm">{m.body}</p>)}
+          {messages.map((m) => (
+            <p key={m.id} className="rounded-lg bg-secondary px-3 py-2 text-sm">
+              {m.body}
+              <Ticks m={m} mine={myId !== null && m.sender_id === myId} />
+            </p>
+          ))}
           {!active && (
             <p className="text-sm text-muted-foreground">
               {starting ? "Starting conversation…" : "Select or start a conversation."}

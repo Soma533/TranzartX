@@ -11,7 +11,13 @@ export async function GET(request: Request) {
   if (conv) {
     const { data, error } = await supabase.from("messages").select("*").eq("conversation_id", conv).order("created_at");
     if (error) return apiError("DB", error.message, 500);
-    return Response.json({ messages: data });
+    // Opening a conversation stamps delivery for everything in it and marks
+    // others' messages read — this powers the ✓/✓✓/blue-✓✓ ticks.
+    const now = new Date().toISOString();
+    await supabase.from("messages").update({ delivered_at: now }).eq("conversation_id", conv).is("delivered_at", null);
+    await supabase.from("messages").update({ read_at: now }).eq("conversation_id", conv).neq("sender_id", profileId ?? "").is("read_at", null);
+    const { data: fresh } = await supabase.from("messages").select("*").eq("conversation_id", conv).order("created_at");
+    return Response.json({ messages: fresh ?? data });
   }
   const { data, error } = await supabase.from("conversation_participants").select("conversation_id").eq("profile_id", profileId ?? "");
   if (error) return apiError("DB", error.message, 500);
