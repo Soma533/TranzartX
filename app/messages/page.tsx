@@ -166,27 +166,17 @@ function MessagesInner() {
       </Card>
       <Card className="md:col-span-2">
         <div className="grid gap-2">
-          {messages.map((m) => (
-            <div
-              key={m.id}
-              className={`flex ${myId !== null && m.sender_id === myId ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`flex max-w-[70%] ${myId !== null && m.sender_id === myId ? 'flex-row-reverse' : 'flex-row'}`}
-              >
-                <p
-                  className={`rounded-2xl px-4 py-2 text-sm ${
-                    myId !== null && m.sender_id === myId
-                      ? 'bg-primary text-white rounded-bl-none'
-                      : 'bg-secondary text-foreground rounded-br-none'
-                  }`}
-                >
+          {messages.map((m) => {
+            const mine = myId !== null && m.sender_id === myId;
+            return (
+              <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                <p className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${mine ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>
                   {m.body}
-                  <Ticks m={m} mine={myId !== null && m.sender_id === myId} />
+                  <Ticks m={m} mine={mine} />
                 </p>
               </div>
-            </div>
-          ))}
+            );
+          })}
           {!active && (
             <p className="text-sm text-muted-foreground">
               {starting ? "Starting conversation…" : "Select or start a conversation."}
