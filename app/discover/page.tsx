@@ -6,123 +6,160 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-type SearchType =
-  | "artwork" | "artists" | "collectors" | "galleries" | "curators"
-  | "organizations" | "aesthetes" | "opportunities" | "collections";
-
-/** Types rendered with the person/avatar card layout. */
-const PERSON_TYPES: SearchType[] = ["artists", "collectors", "galleries", "curators", "organizations", "aesthetes"];
-
-/** Friendly role name shown under the person's name. */
-const ROLE_LABELS: Partial<Record<SearchType, string>> = {
-  artists: "Artist",
-  collectors: "Collector",
-  galleries: "Gallery",
-  curators: "Curator",
-  organizations: "Organisation",
-  aesthetes: "Aesthete"
-};
-
 interface ResultItem {
   id: string;
+  _type: "person" | "artwork" | "opportunity" | "collection";
   title?: string;
   name?: string;
   image_url?: string;
   avatar_url?: string | null;
+  medium?: string | null;
   role?: string;
   type?: string;
-  profiles?: { id: string; name: string };
+  location?: string | null;
+  deadline?: string | null;
+  price_cents?: number | null;
+  currency?: string | null;
+  short_desc?: string | null;
+  is_verified?: boolean;
+  profiles?: { id: string; name: string } | null;
 }
 
-function ResultCard({ item, type }: { item: ResultItem; type: SearchType }) {
-  if (type === "artwork") {
+const ROLE_LABELS: Record<string, string> = {
+  ARTIST: "Artist",
+  COLLECTOR: "Collector",
+  GALLERY: "Gallery",
+  CURATOR: "Curator",
+  ORG: "Organisation",
+  AESTHETE: "Aesthete",
+  ADMIN: "Admin"
+};
+
+const KIND_LABELS: Record<ResultItem["_type"], string> = {
+  artwork: "Artwork",
+  person: "Member",
+  opportunity: "Opportunity",
+  collection: "Collection"
+};
+
+function ResultCard({ item }: { item: ResultItem }) {
+  const badge = (text: string) => (
+    <p className="text-xs uppercase tracking-widest text-primary">{text}</p>
+  );
+
+  if (item._type === "artwork") {
     return (
-      <Card>
+      <Card className="overflow-hidden p-0">
         {item.image_url && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.image_url} alt={item.title ?? "Artwork"} className="h-48 w-full rounded-xl object-cover" loading="lazy" />
+          <Link href={`/artworks/${item.id}`} className="block">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={item.image_url} alt={item.title ?? "Artwork"} className="h-40 w-full object-cover sm:h-48" loading="lazy" />
+          </Link>
         )}
-        <p className="mt-2 font-medium"><Link href={`/artworks/${item.id}`} className="hover:underline">{item.title ?? item.id}</Link></p>
-        {item.profiles && (
-          <p className="text-sm text-muted-foreground">by <Link href={`/artists/${item.profiles.id}`} className="text-primary hover:underline">{item.profiles.name}</Link></p>
-        )}
+        <div className="p-3">
+          {badge(KIND_LABELS.artwork)}
+          <p className="mt-1 truncate font-medium"><Link href={`/artworks/${item.id}`} className="hover:underline">{item.title ?? item.id}</Link></p>
+          {item.profiles && (
+            <p className="text-sm text-muted-foreground">by <Link href={`/artists/${item.profiles.id}`} className="text-primary hover:underline">{item.profiles.name}</Link></p>
+          )}
+          {item.price_cents != null && (
+            <p className="text-sm text-muted-foreground">{item.currency ?? "NGN"} {(item.price_cents / 100).toLocaleString()}</p>
+          )}
+        </div>
       </Card>
     );
   }
-  if (PERSON_TYPES.includes(type)) {
+
+  if (item._type === "person") {
     return (
       <Card>
         <div className="flex items-center gap-3">
           {item.avatar_url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={item.avatar_url} alt={item.name ?? ""} className="h-12 w-12 rounded-full object-cover" />
+            <img src={item.avatar_url} alt={item.name ?? ""} className="h-12 w-12 shrink-0 rounded-full object-cover" />
           ) : (
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary font-bold">{(item.name ?? "?").slice(0, 1)}</div>
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-secondary font-bold">{(item.name ?? "?").slice(0, 1)}</div>
           )}
           <div className="min-w-0">
-            <p className="truncate font-medium"><Link href={`/artists/${item.id}`} className="hover:underline">{item.name ?? item.id}</Link></p>
-            {(ROLE_LABELS[type] || item.role) && <p className="text-xs text-muted-foreground">{ROLE_LABELS[type] ?? item.role}</p>}
+            <p className="truncate font-medium">
+              <Link href={`/artists/${item.id}`} className="hover:underline">{item.name ?? item.id}</Link>
+              {item.is_verified && <span className="ml-1 text-primary" title="Verified">✓</span>}
+            </p>
+            {item.role && <p className="text-xs text-muted-foreground">{ROLE_LABELS[item.role] ?? item.role}</p>}
+            {item.short_desc && <p className="truncate text-xs text-muted-foreground">{item.short_desc}</p>}
           </div>
         </div>
       </Card>
     );
   }
-  if (type === "opportunities") {
+
+  if (item._type === "opportunity") {
     return (
       <Card>
-        <p className="text-xs uppercase tracking-widest text-primary">{item.type?.replaceAll("_", " ")}</p>
-        <p className="font-medium"><Link href={`/opportunities/${item.id}`} className="hover:underline">{item.title ?? item.id}</Link></p>
+        {badge(item.type?.replaceAll("_", " ") ?? KIND_LABELS.opportunity)}
+        <p className="mt-1 font-medium"><Link href={`/opportunities/${item.id}`} className="hover:underline">{item.title ?? item.id}</Link></p>
+        {item.deadline && <p className="text-xs text-muted-foreground">Closes {new Date(item.deadline).toLocaleDateString()}</p>}
       </Card>
     );
   }
+
   return (
-    <Card><p className="text-sm font-medium">{item.title ?? item.name ?? item.id}</p></Card>
+    <Card>
+      {badge(KIND_LABELS.collection)}
+      <p className="mt-1 truncate font-medium">{item.title ?? item.id}</p>
+    </Card>
   );
 }
 
+/** One search box across artworks, members, opportunities and collections. */
 export default function DiscoverPage() {
   const [q, setQ] = useState("");
-  const [type, setType] = useState<SearchType>("artwork");
-  const [submitted, setSubmitted] = useState<{ q: string; type: SearchType } | null>(null);
+  const [submitted, setSubmitted] = useState<string | null>(null);
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["search", submitted],
+    queryKey: ["search", "all", submitted],
     queryFn: async () => {
-      if (!submitted) return { results: [] as ResultItem[] };
-      const r = await fetch(`/api/search?q=${encodeURIComponent(submitted.q)}&type=${submitted.type}`);
+      const r = await fetch(`/api/search?type=all&q=${encodeURIComponent(submitted ?? "")}`);
       if (!r.ok) throw new Error("search failed");
       return r.json() as Promise<{ results: ResultItem[] }>;
     },
     enabled: submitted !== null,
     retry: 1
   });
+  const results = data?.results ?? [];
   return (
     <div className="grid gap-4">
       <h1 className="text-2xl font-bold">Discover</h1>
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search artists, artwork, galleries…" />
-        <select value={type} onChange={(e) => setType(e.target.value as SearchType)} className="rounded-xl border px-2 py-2 text-sm sm:max-w-[11rem]">
-          <option value="artwork">Artwork</option>
-          <option value="artists">Artists</option>
-          <option value="collectors">Collectors</option>
-          <option value="galleries">Galleries</option>
-          <option value="curators">Curators</option>
-          <option value="organizations">Art organisations</option>
-          <option value="aesthetes">Aesthetes</option>
-          <option value="opportunities">Opportunities</option>
-          <option value="collections">Collections</option>
-        </select>
-        <Button onClick={() => setSubmitted({ q, type })}>Search</Button>
-      </div>
+      <form
+        className="flex flex-col gap-2 sm:flex-row"
+        onSubmit={(e) => { e.preventDefault(); setSubmitted(q); }}
+      >
+        <Input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search artworks, artists, galleries, curators, organisations, opportunities…"
+          aria-label="Search everything"
+        />
+        <Button type="submit">Search</Button>
+      </form>
+      <p className="text-xs text-muted-foreground">
+        Searches artworks, members, opportunities and collections at once — no category needed.
+      </p>
       {isLoading && <p className="text-sm text-muted-foreground">Searching…</p>}
       {isError && <p className="text-sm text-muted-foreground">Search failed — sign in and try again.</p>}
-      <div className="grid gap-3 md:grid-cols-3">
-        {(data?.results ?? []).map((item) => (
-          <ResultCard key={item.id} item={item} type={submitted?.type ?? "artwork"} />
+      {submitted !== null && !isLoading && !isError && (
+        <p className="text-sm text-muted-foreground">
+          {results.length} {results.length === 1 ? "result" : "results"}
+          {submitted.trim() ? ` for “${submitted.trim()}”` : " across everything"}.
+        </p>
+      )}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {results.map((item) => (
+          <ResultCard key={`${item._type}-${item.id}`} item={item} />
         ))}
       </div>
-      {submitted && !isLoading && !isError && (data?.results ?? []).length === 0 && (
+      {submitted !== null && !isLoading && !isError && results.length === 0 && (
         <p className="text-sm text-muted-foreground">
-          No results — try another term, pick a different category (artists, collectors, galleries, curators, organisations, aesthetes), or leave the box empty to browse everything.
+          No results — try another term, or leave the box empty to browse everything.
         </p>
       )}
     </div>

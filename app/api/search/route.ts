@@ -11,6 +11,27 @@ export async function GET(request: Request) {
   const country = params.get("country") ?? "";
   const discipline = params.get("discipline") ?? "";
   try {
+    // Unified search: one box searches every category at once (type=all),
+    // tagging each hit so the UI can render the right card.
+    if (type === "all") {
+      const like = `%${q}%`;
+      const [people, artworks, opps, cols] = await Promise.all([
+        supabase.from("profiles").select("id,name,role,avatar_url,disciplines,location_country,short_desc,is_verified").ilike("name", like).limit(24),
+        supabase.from("artworks").select("id,title,image_url,medium,price_cents,currency,availability,created_at,profiles!artworks_artist_id_fkey(id,name)").ilike("title", like).limit(24),
+        supabase.from("opportunities").select("id,title,type,location,deadline").ilike("title", like).limit(12),
+        supabase.from("collections").select("id,title,description").ilike("title", like).limit(12)
+      ]);
+      const err = people.error ?? artworks.error ?? opps.error ?? cols.error;
+      if (err) throw err;
+      return Response.json({
+        results: [
+          ...(people.data ?? []).map((p) => ({ ...p, _type: "person" })),
+          ...(artworks.data ?? []).map((a) => ({ ...a, _type: "artwork" })),
+          ...(opps.data ?? []).map((o) => ({ ...o, _type: "opportunity" })),
+          ...(cols.data ?? []).map((c) => ({ ...c, _type: "collection" }))
+        ]
+      });
+    }
     // Role filters for roles without a dedicated branch
     // (artists and galleries keep their original queries).
     const ROLE_FILTERS: Record<string, string> = {
