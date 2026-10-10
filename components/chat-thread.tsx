@@ -110,13 +110,7 @@ export function Composer({ draft, setDraft, boxRef, send, disabled, starting, se
             void send();
           }
         }}
-        placeholder={
-          active
-            ? "Write a professional message…"
-            : hasTarget
-              ? "Starting conversation — type, then Send…"
-              : "Select a conversation first…"
-        }
+        placeholder=""
         // 16px stops iOS Safari auto-zooming the page on focus.
         className="text-[16px] md:text-sm"
       />
@@ -126,15 +120,20 @@ export function Composer({ draft, setDraft, boxRef, send, disabled, starting, se
         disabled={disabled}
         aria-label="Send message"
         title={disabled && !draft.trim() ? "Type a message first" : !active && !hasTarget ? "Select a conversation first" : "Send message (Ctrl+Enter)"}
-        className="h-10 w-10 shrink-0 px-0 md:h-auto md:w-auto md:px-4"
+        className="h-10 w-10 shrink-0 px-0"
       >
-        {/* Paper plane: unambiguous send target for touch. */}
-        <svg aria-hidden viewBox="0 0 24 24" className="h-5 w-5 md:hidden" fill="currentColor">
-          <path d="M2.5 21 23 12 2.5 3 2.5 10l14 2-14 2z" />
-        </svg>
-        <span className="hidden md:inline">
-          {sending ? "Sending…" : starting ? "Starting…" : "Send"}
-        </span>
+        {sending || starting ? (
+          /* Spinner replaces the icon only while the request is in flight. */
+          <svg aria-hidden viewBox="0 0 24 24" className="h-5 w-5 animate-spin" fill="none" stroke="currentColor" strokeWidth="3">
+            <circle cx="12" cy="12" r="9" strokeOpacity="0.25" />
+            <path d="M21 12a9 9 0 0 0-9-9" strokeLinecap="round" />
+          </svg>
+        ) : (
+          /* Paper plane: unambiguous send target for touch. */
+          <svg aria-hidden viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
+            <path d="M2.5 21 23 12 2.5 3 2.5 10l14 2-14 2z" />
+          </svg>
+        )}
       </Button>
     </div>
   );
