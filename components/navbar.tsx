@@ -6,6 +6,7 @@ import { Logo } from "@/components/logo";
 import { HeartIcon } from "@/components/icons";
 import { MENU_ITEMS } from "@/components/nav-items";
 import { NotificationBell } from "@/components/notification-bell";
+import { InstallButton } from "@/components/install-button";
 import { createClient } from "@/lib/supabase/client";
 
 /** Phones: the five core destinations live in the bottom tab bar, not the menu. */
@@ -42,6 +43,7 @@ export function Navbar() {
         <Link href="/" aria-label="TranzartX home"><Logo /></Link>
         {/* Laptops navigate via the left icon rail, so no text links here. */}
         <div className="flex items-center gap-2 text-sm">
+          <div className="hidden sm:block"><InstallButton compact /></div>
           {account !== false && <NotificationBell />}
           <div className="hidden items-center gap-2 lg:flex">
             <Link href="/settings" className="rounded-xl border px-3 py-1.5">Settings</Link>
@@ -63,6 +65,7 @@ export function Navbar() {
       </div>
       {open && (
         <nav aria-label="Primary" className="grid gap-1 border-t px-4 py-3 text-sm lg:hidden">
+          <div className="mb-1 sm:hidden"><InstallButton /></div>
           {account !== false && (
             <Link href="/notifications" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-2 py-1.5 font-medium text-foreground hover:bg-secondary">
               <HeartIcon className="h-5 w-5" />
