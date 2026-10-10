@@ -17,6 +17,7 @@ export default function NetworkPage() {
   const [requests, setRequests] = useState<ConnRequest[]>([]);
   const [following, setFollowing] = useState<Set<string>>(new Set());
   const [requested, setRequested] = useState<Set<string>>(new Set());
+  const [connected, setConnected] = useState<Set<string>>(new Set());
   const [q, setQ] = useState("");
   const [searching, setSearching] = useState(false);
   const [myId, setMyId] = useState<string | null>(null);
@@ -30,6 +31,11 @@ export default function NetworkPage() {
     }).catch(() => null);
     const all = (j?.suggestions ?? []) as Person[];
     setPeople(me?.profile ? all.filter((p) => p.id !== me.profile.id) : all);
+    // Restore relationship state so "Following ✓" survives reloads and follows
+    // made elsewhere (notifications, search) show correctly here.
+    setFollowing(new Set((j?.following ?? []) as string[]));
+    setRequested(new Set((j?.requested ?? []) as string[]));
+    setConnected(new Set((j?.connected ?? []) as string[]));
     const t = await fetch("/api/network/requests").then((r) => r.json()).catch(() => null);
     setRequests(t?.requests ?? []);
   }
@@ -122,6 +128,8 @@ export default function NetworkPage() {
               )}
               {requested.has(p.id) ? (
                 <Button variant="outline" disabled>Requested ✓</Button>
+              ) : connected.has(p.id) ? (
+                <Button variant="outline" disabled>Connected ✓</Button>
               ) : (
                 <Button variant="outline" onClick={() => act(p.id, "connect")}>Connect</Button>
               )}

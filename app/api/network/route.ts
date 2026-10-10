@@ -6,10 +6,23 @@ export async function GET() {
   const guard = await requireUser();
   if ("error" in guard) return guard.error;
   const { supabase, profileId } = guard;
-  if (!profileId) return Response.json({ suggestions: [] });
-  const { data, error } = await supabase.from("profiles").select("id,name,role,disciplines").neq("id", profileId).limit(8);
-  if (error) return apiError("DB", error.message, 500);
-  return Response.json({ suggestions: data });
+  if (!profileId) return Response.json({ suggestions: [], following: [], connected: [], requested: [] });
+  // The UI needs my existing relationships too, otherwise "Following ✓" is lost
+  // on every reload (it only survived while the tab stayed open).
+  const [suggestions, follows, conns] = await Promise.all([
+    supabase.from("profiles").select("id,name,role,disciplines").neq("id", profileId).limit(8),
+    supabase.from("follows").select("following_id").eq("follower_id", profileId),
+    supabase.from("connections").select("receiver_id,status").eq("requester_id", profileId)
+  ]);
+  if (suggestions.error) return apiError("DB", suggestions.error.message, 500);
+  const following = (follows.data ?? []).map((f) => (f as { following_id: string }).following_id);
+  const allConns = conns.data ?? [];
+  return Response.json({
+    suggestions: suggestions.data ?? [],
+    following,
+    requested: allConns.filter((c) => (c as { status: string }).status === "PENDING").map((c) => (c as { receiver_id: string }).receiver_id),
+    connected: allConns.filter((c) => (c as { status: string }).status !== "PENDING").map((c) => (c as { receiver_id: string }).receiver_id)
+  });
 }
 
 export async function POST(request: Request) {
