@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Navbar } from "@/components/navbar";
 import { MobileTabBar } from "@/components/mobile-tabbar";
+import { DesktopSidebar } from "@/components/desktop-sidebar";
 import { Footer } from "@/components/footer";
 import { Toaster } from "@/components/toaster";
 
@@ -39,8 +40,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="font-sans">
         <Providers>
           <Navbar />
-          {/* Extra bottom padding so the phone tab bar never covers content. */}
-          <main className="mx-auto max-w-6xl px-4 py-8 pb-24 md:pb-8">{children}</main>
+          <div className="mx-auto flex max-w-6xl gap-6 px-4">
+            <DesktopSidebar />
+            {/* Extra bottom padding so the phone tab bar never covers content. */}
+            <main className="min-w-0 flex-1 py-8 pb-24 md:pb-8">{children}</main>
+          </div>
           <Footer />
           <Toaster />
           <MobileTabBar />

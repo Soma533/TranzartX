@@ -1,19 +1,14 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { HomeIcon, CompassIcon, MessageIcon, BriefcaseIcon, GearIcon } from "@/components/icons";
+import { CORE_ITEMS } from "@/components/nav-items";
 
 /**
- * Instagram-style bottom tab bar, phones only. The five core destinations live
- * here as icons with labels; the rest stay in the navbar menu (PRD §7).
+ * Instagram-style bottom tab bar, phones only (laptops get DesktopSidebar).
+ * The five core destinations live here as icons with labels; the rest stay in
+ * the navbar menu (PRD §7).
  */
-const tabs = [
-  { href: "/today", label: "Today", Icon: HomeIcon },
-  { href: "/discover", label: "Discover", Icon: CompassIcon },
-  { href: "/messages", label: "Messages", Icon: MessageIcon },
-  { href: "/opportunities", label: "Opportunities", Icon: BriefcaseIcon },
-  { href: "/settings", label: "Settings", Icon: GearIcon }
-];
+const tabs = CORE_ITEMS;
 
 export function MobileTabBar() {
   const pathname = usePathname();

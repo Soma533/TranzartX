@@ -4,24 +4,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Logo } from "@/components/logo";
 import { HeartIcon } from "@/components/icons";
+import { MENU_ITEMS } from "@/components/nav-items";
 import { NotificationBell } from "@/components/notification-bell";
 import { createClient } from "@/lib/supabase/client";
 
-const links = [
-  { href: "/today", label: "Today" },
-  { href: "/portfolio", label: "Portfolio" },
-  { href: "/opportunities", label: "Opportunities" },
-  { href: "/tracking", label: "Tracking" },
-  { href: "/network", label: "Network" },
-  { href: "/messages", label: "Messages" },
-  { href: "/inquiries", label: "Inquiries" },
-  { href: "/assistant", label: "Assistant" },
-  { href: "/discover", label: "Discover" }
-];
-
-/** Phones: these five live in the bottom tab bar, not the menu. */
-const TAB_HREFS = new Set(["/today", "/discover", "/messages", "/opportunities", "/settings"]);
-const menuLinks = links.filter((l) => !TAB_HREFS.has(l.href));
+/** Phones: the five core destinations live in the bottom tab bar, not the menu. */
+const menuLinks = MENU_ITEMS;
 
 export function Navbar() {
   const router = useRouter();
@@ -52,13 +40,7 @@ export function Navbar() {
     <header className="sticky top-0 z-40 border-b bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
         <Link href="/" aria-label="TranzartX home"><Logo /></Link>
-        <nav className="hidden gap-4 text-sm lg:flex">
-          {links.map((l) => (
-            <Link key={l.href} href={l.href} className="text-muted-foreground hover:text-foreground">
-              {l.label}
-            </Link>
-          ))}
-        </nav>
+        {/* Laptops navigate via the left icon rail, so no text links here. */}
         <div className="flex items-center gap-2 text-sm">
           {account !== false && <NotificationBell />}
           <div className="hidden items-center gap-2 lg:flex">
