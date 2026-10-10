@@ -4,33 +4,64 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { uploadImage } from "@/lib/upload";
 import { useToast } from "@/hooks/use-toast";
-import { Input, Textarea } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardTitle } from "@/components/ui/card";
+import { ProfileSettings, PortfolioSettings, InquirySettings } from "@/app/settings/sections";
+import type { SettingsForm } from "@/app/settings/fields";
 
-const COLLAB_OPTIONS = ["Joint exhibitions", "Art projects", "Photography", "Digital projects", "Installations", "Cross-disciplinary"];
+const TABS = [
+  { id: "profile", label: "Profile" },
+  { id: "portfolio", label: "Portfolio" },
+  { id: "inquiries", label: "Inquiries" }
+] as const;
 
-/** Account + professional profile settings (PRD §7 progressive profile, §20 collabs, §24 prefs). */
+type TabId = (typeof TABS)[number]["id"];
+
+const EMPTY: SettingsForm = {
+  name: "", location_country: "", location_city: "", bio: "", statement: "", short_desc: "",
+  career_stage: "", avatar_url: "", commission_open: false,
+  collaboration_types: [],
+  notify_matches: true, notify_saves: true, notify_deadlines: true,
+  portfolio_public: true, show_prices: true,
+  default_currency: "NGN", default_availability: "AVAILABLE",
+  inquiries_open: true, inquiry_auto_reply: "", inquiry_response_time: "1-2 days"
+};
+
+/** Profile, portfolio and inquiry settings, grouped into tabs (PRD §7). */
 export default function SettingsPage() {
   const router = useRouter();
   const { push } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
+  const [tab, setTab] = useState<TabId>("profile");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    name: "", location_country: "", location_city: "", bio: "", statement: "", short_desc: "",
-    career_stage: "", avatar_url: "", commission_open: false,
-    collaboration_types: [] as string[],
-    notify_matches: true, notify_saves: true, notify_deadlines: true
-  });
+  const [form, setForm] = useState<SettingsForm>(EMPTY);
+
+  const [vKind, setVKind] = useState("IDENTITY");
+  const [vEvidence, setVEvidence] = useState("");
+  const [vRequests, setVRequests] = useState<{ id: string; kind: string; status: string }[]>([]);
 
   useEffect(() => {
     fetch("/api/profiles/me").then((r) => r.json()).then((j) => {
-      if (j.profile) setForm((f) => ({ ...f, ...j.profile, collaboration_types: j.profile.collaboration_types ?? [] }));
+      if (j.profile) {
+        const p = j.profile as Record<string, unknown>;
+        setForm((f) => ({
+          ...f,
+          ...p,
+          collaboration_types: (p.collaboration_types as string[]) ?? [],
+          inquiry_auto_reply: (p.inquiry_auto_reply as string) ?? "",
+          default_currency: (p.default_currency as string) ?? "NGN",
+          default_availability: (p.default_availability as string) ?? "AVAILABLE",
+          inquiry_response_time: (p.inquiry_response_time as string) ?? "1-2 days"
+        }));
+      }
     }).catch(() => null).finally(() => setLoading(false));
   }, []);
 
-  function set<K extends keyof typeof form>(k: K, v: (typeof form)[K]) {
+  useEffect(() => {
+    fetch("/api/verification").then((r) => r.json()).then((j) => setVRequests(j.requests ?? [])).catch(() => null);
+  }, []);
+
+  function set<K extends keyof SettingsForm>(k: K, v: SettingsForm[K]) {
     setForm((f) => ({ ...f, [k]: v }));
   }
 
@@ -54,14 +85,6 @@ export default function SettingsPage() {
       push(err instanceof Error ? err.message : "Photo upload failed");
     }
   }
-
-  const [vKind, setVKind] = useState("IDENTITY");
-  const [vEvidence, setVEvidence] = useState("");
-  const [vRequests, setVRequests] = useState<{ id: string; kind: string; status: string }[]>([]);
-
-  useEffect(() => {
-    fetch("/api/verification").then((r) => r.json()).then((j) => setVRequests(j.requests ?? [])).catch(() => null);
-  }, []);
 
   async function requestVerification() {
     const r = await fetch("/api/verification", {
@@ -112,77 +135,31 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto grid max-w-2xl gap-4">
       <h1 className="text-2xl font-bold">Settings</h1>
-      <Card>
-        <CardTitle>Profile photo</CardTitle>
-        <div className="mt-2 flex items-center gap-3">
-          {form.avatar_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={form.avatar_url} alt="Avatar" className="h-14 w-14 rounded-full object-cover" />
-          ) : (
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary font-bold">?</div>
-          )}
-          <Button variant="secondary" onClick={() => fileRef.current?.click()}>Upload photo</Button>
-          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={avatar} />
-        </div>
-      </Card>
-      <Card>
-        <CardTitle>Professional identity</CardTitle>
-        <div className="mt-2 grid gap-2">
-          <Input placeholder="Full name" value={form.name} onChange={(e) => set("name", e.target.value)} />
-          <div className="grid grid-cols-2 gap-2">
-            <Input placeholder="Country" value={form.location_country ?? ""} onChange={(e) => set("location_country", e.target.value)} />
-            <Input placeholder="City" value={form.location_city ?? ""} onChange={(e) => set("location_city", e.target.value)} />
-          </div>
-          <Input placeholder="Tagline (max 140 chars)" value={form.short_desc ?? ""} onChange={(e) => set("short_desc", e.target.value)} maxLength={140} />
-          <Input placeholder="Career stage (e.g. Emerging)" value={form.career_stage ?? ""} onChange={(e) => set("career_stage", e.target.value)} />
-          <Textarea rows={4} placeholder="Biography" value={form.bio ?? ""} onChange={(e) => set("bio", e.target.value)} />
-          <Textarea rows={4} placeholder="Artist statement" value={form.statement ?? ""} onChange={(e) => set("statement", e.target.value)} />
-        </div>
-      </Card>
-      <Card>
-        <CardTitle>Availability</CardTitle>
-        <label className="mt-2 flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={form.commission_open} onChange={(e) => set("commission_open", e.target.checked)} />
-          Open to commissions & collaborations
-        </label>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {COLLAB_OPTIONS.map((o) => (
-            <button
-              key={o}
-              onClick={() => toggleCollab(o)}
-              className={`rounded-full border px-3 py-1 text-xs ${form.collaboration_types.includes(o) ? "bg-primary text-white" : "bg-white text-muted-foreground"}`}
-            >
-              {o}
-            </button>
-          ))}
-        </div>
-      </Card>
-      <Card>
-        <CardTitle>Notifications</CardTitle>
-        {[["notify_matches", "New opportunities matching my goals"], ["notify_saves", "Someone saves my artwork"], ["notify_deadlines", "Application deadline reminders"]].map(([k, label]) => (
-          <label key={k} className="mt-2 flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={form[k as "notify_matches"]} onChange={(e) => set(k as "notify_matches", e.target.checked)} />
-            {label}
-          </label>
+
+      <div role="tablist" aria-label="Settings sections" className="flex gap-1 rounded-xl border p-1">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => setTab(t.id)}
+            className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium ${tab === t.id ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`}
+          >
+            {t.label}
+          </button>
         ))}
-      </Card>
-      <Card>
-        <CardTitle>Verification</CardTitle>
-        <p className="mt-1 text-sm text-muted-foreground">Verified profiles earn buyer and gallery trust. Tell us what to verify.</p>
-        <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-          <select value={vKind} onChange={(e) => setVKind(e.target.value)} className="rounded-xl border px-2 py-2 text-sm">
-            <option value="IDENTITY">Artist identity</option>
-            <option value="EXHIBITION">Exhibition history</option>
-            <option value="GALLERY">Gallery affiliation</option>
-            <option value="ORGANIZATION">Organization</option>
-          </select>
-          <Input placeholder="Evidence (link or reference)" value={vEvidence} onChange={(e) => setVEvidence(e.target.value)} />
-          <Button variant="secondary" onClick={requestVerification} className="sm:shrink-0">Request</Button>
-        </div>
-        {vRequests.map((v) => (
-          <p key={v.id} className="mt-1 text-xs text-muted-foreground">{v.kind} — {v.status}</p>
-        ))}
-      </Card>
+      </div>
+
+      {tab === "profile" && (
+        <ProfileSettings
+          form={form} set={set} fileRef={fileRef} onAvatar={avatar}
+          vKind={vKind} setVKind={setVKind} vEvidence={vEvidence} setVEvidence={setVEvidence}
+          onRequestVerification={requestVerification} vRequests={vRequests}
+        />
+      )}
+      {tab === "portfolio" && <PortfolioSettings form={form} set={set} toggleCollab={toggleCollab} />}
+      {tab === "inquiries" && <InquirySettings form={form} set={set} />}
+
       <div className="flex flex-wrap gap-2">
         <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save settings"}</Button>
         <Button variant="outline" onClick={signOut}>Sign out</Button>

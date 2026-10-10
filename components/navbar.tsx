@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Logo } from "@/components/logo";
+import { HeartIcon } from "@/components/icons";
 import { NotificationBell } from "@/components/notification-bell";
 import { createClient } from "@/lib/supabase/client";
 
@@ -17,6 +18,10 @@ const links = [
   { href: "/assistant", label: "Assistant" },
   { href: "/discover", label: "Discover" }
 ];
+
+/** Phones: these five live in the bottom tab bar, not the menu. */
+const TAB_HREFS = new Set(["/today", "/discover", "/messages", "/opportunities", "/settings"]);
+const menuLinks = links.filter((l) => !TAB_HREFS.has(l.href));
 
 export function Navbar() {
   const router = useRouter();
@@ -75,13 +80,14 @@ export function Navbar() {
         </div>
       </div>
       {open && (
-        <nav className="grid gap-1 border-t px-4 py-3 text-sm lg:hidden">
+        <nav aria-label="Primary" className="grid gap-1 border-t px-4 py-3 text-sm lg:hidden">
           {account !== false && (
-            <Link href="/notifications" onClick={() => setOpen(false)} className="rounded-lg px-2 py-1.5 font-medium text-foreground hover:bg-secondary">
-              🔔 Notifications
+            <Link href="/notifications" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-2 py-1.5 font-medium text-foreground hover:bg-secondary">
+              <HeartIcon className="h-5 w-5" />
+              Notifications
             </Link>
           )}
-          {links.map((l) => (
+          {menuLinks.map((l) => (
             <Link key={l.href} href={l.href} onClick={() => setOpen(false)} className="rounded-lg px-2 py-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground">
               {l.label}
             </Link>

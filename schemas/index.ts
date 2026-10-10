@@ -17,7 +17,16 @@ export const profileSchema = z.object({
   notify_matches: z.boolean().default(true),
   notify_saves: z.boolean().default(true),
   notify_deadlines: z.boolean().default(true),
-  commission_open: z.boolean().default(false)
+  commission_open: z.boolean().default(false),
+  // Portfolio settings (§7)
+  portfolio_public: z.boolean().default(true),
+  show_prices: z.boolean().default(true),
+  default_currency: z.string().length(3).default("NGN"),
+  default_availability: z.enum(["AVAILABLE", "SOLD", "RESERVED", "NOT_FOR_SALE"]).default("AVAILABLE"),
+  // Inquiry settings (§25)
+  inquiries_open: z.boolean().default(true),
+  inquiry_auto_reply: z.string().max(500).optional().nullable(),
+  inquiry_response_time: z.string().max(40).default("1-2 days")
 });
 
 export const artworkSchema = z.object({

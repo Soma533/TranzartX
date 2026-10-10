@@ -3,6 +3,7 @@ import { Manrope } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Navbar } from "@/components/navbar";
+import { MobileTabBar } from "@/components/mobile-tabbar";
 import { Footer } from "@/components/footer";
 import { Toaster } from "@/components/toaster";
 
@@ -38,9 +39,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="font-sans">
         <Providers>
           <Navbar />
-          <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+          {/* Extra bottom padding so the phone tab bar never covers content. */}
+          <main className="mx-auto max-w-6xl px-4 py-8 pb-24 md:pb-8">{children}</main>
           <Footer />
           <Toaster />
+          <MobileTabBar />
         </Providers>
       </body>
     </html>

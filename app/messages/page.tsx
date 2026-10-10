@@ -152,20 +152,20 @@ function MessagesInner() {
   const sendDisabled = !draft.trim() || sending || starting;
   return (
     <div className="grid gap-4 md:grid-cols-3">
-      {/* Phone: horizontal picker instead of a stacked list pushing chat off-screen. */}
+      {/* Phone: stacked vertical list, matching the desktop sidebar rhythm. */}
       <div className="md:hidden">
         <p className="mb-2 text-sm font-semibold">Conversations</p>
         {conversations.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No conversations yet � find people on the Network tab.</p>
+          <p className="text-sm text-muted-foreground">No conversations yet — find people on the Network tab.</p>
         ) : (
-          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+          <div className="grid gap-1">
             {conversations.map((c) => (
               <button
                 key={c.conversation_id}
                 onClick={() => setActive(c.conversation_id)}
-                className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-sm ${c.conversation_id === active ? "border-primary bg-primary text-white" : "bg-white"}`}
+                className={`block w-full truncate rounded-lg border px-3 py-2.5 text-left text-sm ${c.conversation_id === active ? "border-primary bg-primary text-white" : "bg-white"}`}
               >
-                {c.with?.name ?? `${c.conversation_id.slice(0, 8)}�`}
+                {c.with?.name ?? `${c.conversation_id.slice(0, 8)}…`}
               </button>
             ))}
           </div>
@@ -175,10 +175,10 @@ function MessagesInner() {
         <p className="font-semibold">Conversations</p>
         {conversations.map((c) => (
           <button key={c.conversation_id} onClick={() => setActive(c.conversation_id)} className={`mt-2 block w-full truncate rounded-lg border px-2 py-1 text-left text-sm ${c.conversation_id === active ? "bg-primary text-white" : ""}`}>
-            {c.with?.name ?? `${c.conversation_id.slice(0, 8)}�`}
+            {c.with?.name ?? `${c.conversation_id.slice(0, 8)}…`}
           </button>
         ))}
-        {conversations.length === 0 && <p className="mt-2 text-sm text-muted-foreground">No conversations yet � find people on the Network tab.</p>}
+        {conversations.length === 0 && <p className="mt-2 text-sm text-muted-foreground">No conversations yet — find people on the Network tab.</p>}
       </Card>
       <Card className="flex flex-col p-3 md:col-span-2 md:p-4">
         <ChatThread messages={messages} myId={myId} active={active !== null} starting={starting} endRef={endRef} />
@@ -203,7 +203,7 @@ function MessagesInner() {
 
 export default function MessagesPage() {
   return (
-    <Suspense fallback={<p className="text-sm text-muted-foreground">Loading messages�</p>}>
+    <Suspense fallback={<p className="text-sm text-muted-foreground">Loading messages…</p>}>
       <MessagesInner />
     </Suspense>
   );
