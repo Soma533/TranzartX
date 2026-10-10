@@ -6,7 +6,22 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-type SearchType = "artwork" | "artists" | "galleries" | "opportunities" | "collections";
+type SearchType =
+  | "artwork" | "artists" | "collectors" | "galleries" | "curators"
+  | "organizations" | "aesthetes" | "opportunities" | "collections";
+
+/** Types rendered with the person/avatar card layout. */
+const PERSON_TYPES: SearchType[] = ["artists", "collectors", "galleries", "curators", "organizations", "aesthetes"];
+
+/** Friendly role name shown under the person's name. */
+const ROLE_LABELS: Partial<Record<SearchType, string>> = {
+  artists: "Artist",
+  collectors: "Collector",
+  galleries: "Gallery",
+  curators: "Curator",
+  organizations: "Organisation",
+  aesthetes: "Aesthete"
+};
 
 interface ResultItem {
   id: string;
@@ -34,7 +49,7 @@ function ResultCard({ item, type }: { item: ResultItem; type: SearchType }) {
       </Card>
     );
   }
-  if (type === "artists" || type === "galleries") {
+  if (PERSON_TYPES.includes(type)) {
     return (
       <Card>
         <div className="flex items-center gap-3">
@@ -44,9 +59,9 @@ function ResultCard({ item, type }: { item: ResultItem; type: SearchType }) {
           ) : (
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary font-bold">{(item.name ?? "?").slice(0, 1)}</div>
           )}
-          <div>
-            <p className="font-medium"><Link href={`/artists/${item.id}`} className="hover:underline">{item.name ?? item.id}</Link></p>
-            {item.role && <p className="text-xs text-muted-foreground">{item.role}</p>}
+          <div className="min-w-0">
+            <p className="truncate font-medium"><Link href={`/artists/${item.id}`} className="hover:underline">{item.name ?? item.id}</Link></p>
+            {(ROLE_LABELS[type] || item.role) && <p className="text-xs text-muted-foreground">{ROLE_LABELS[type] ?? item.role}</p>}
           </div>
         </div>
       </Card>
@@ -85,10 +100,14 @@ export default function DiscoverPage() {
       <h1 className="text-2xl font-bold">Discover</h1>
       <div className="flex flex-col gap-2 sm:flex-row">
         <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search artists, artwork, galleries…" />
-        <select value={type} onChange={(e) => setType(e.target.value as SearchType)} className="rounded-xl border px-2 text-sm">
+        <select value={type} onChange={(e) => setType(e.target.value as SearchType)} className="rounded-xl border px-2 py-2 text-sm sm:max-w-[11rem]">
           <option value="artwork">Artwork</option>
           <option value="artists">Artists</option>
+          <option value="collectors">Collectors</option>
           <option value="galleries">Galleries</option>
+          <option value="curators">Curators</option>
+          <option value="organizations">Art organisations</option>
+          <option value="aesthetes">Aesthetes</option>
           <option value="opportunities">Opportunities</option>
           <option value="collections">Collections</option>
         </select>
@@ -103,7 +122,7 @@ export default function DiscoverPage() {
       </div>
       {submitted && !isLoading && !isError && (data?.results ?? []).length === 0 && (
         <p className="text-sm text-muted-foreground">
-          No results — try another term, a different category, or leave the box empty to browse everything.
+          No results — try another term, pick a different category (artists, collectors, galleries, curators, organisations, aesthetes), or leave the box empty to browse everything.
         </p>
       )}
     </div>

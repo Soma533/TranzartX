@@ -11,6 +11,27 @@ export async function GET(request: Request) {
   const country = params.get("country") ?? "";
   const discipline = params.get("discipline") ?? "";
   try {
+    // Role filters for roles without a dedicated branch
+    // (artists and galleries keep their original queries).
+    const ROLE_FILTERS: Record<string, string> = {
+      collectors: "COLLECTOR",
+      curators: "CURATOR",
+      organizations: "ORG",
+      aesthetes: "AESTHETE"
+    };
+    if (ROLE_FILTERS[type]) {
+      let query = supabase
+        .from("profiles")
+        .select("*")
+        .eq("role", ROLE_FILTERS[type])
+        .ilike("name", `%${q}%`)
+        .limit(24);
+      if (country) query = query.eq("location_country", country);
+      if (discipline) query = query.overlaps("disciplines", [discipline]);
+      const { data, error } = await query;
+      if (error) throw error;
+      return Response.json({ results: data });
+    }
     if (type === "artists") {
       let query = supabase.from("profiles").select("*").eq("role", "ARTIST").ilike("name", `%${q}%`).limit(24);
       if (country) query = query.eq("location_country", country);
