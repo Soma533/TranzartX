@@ -11,6 +11,20 @@ import { useToast } from "@/hooks/use-toast";
 
 interface Msg { id: string; body: string; sender_id: string; created_at: string; delivered_at: string | null; read_at: string | null; }
 
+/** Chat bubble clock: time for today, "Yesterday 14:05" for older (PRD §18). */
+function stamp(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const today = new Date();
+  const sameDay = d.toDateString() === today.toDateString();
+  if (sameDay) return time;
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const prefix = d.toDateString() === yesterday.toDateString() ? "Yesterday " : `${d.toLocaleDateString([], { day: "numeric", month: "short" })} `;
+  return prefix + time;
+}
+
 /** WhatsApp-style ticks: ✓ sent, ✓✓ delivered, blue ✓✓ read. */
 function Ticks({ m, mine }: { m: Msg; mine: boolean }) {
   if (!mine) return null;
@@ -170,10 +184,13 @@ function MessagesInner() {
             const mine = myId !== null && m.sender_id === myId;
             return (
               <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                <p className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${mine ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>
-                  {m.body}
-                  <Ticks m={m} mine={mine} />
-                </p>
+                <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${mine ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>
+                  <p className="whitespace-pre-wrap break-words">{m.body}</p>
+                  <span className={`mt-0.5 flex items-center justify-end gap-1 text-[10px] leading-none ${mine ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                    {stamp(m.created_at)}
+                    <Ticks m={m} mine={mine} />
+                  </span>
+                </div>
               </div>
             );
           })}
