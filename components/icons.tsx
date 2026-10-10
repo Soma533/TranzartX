@@ -105,3 +105,14 @@ export function SparkIcon({ className = base }: IconProps) {
     </svg>
   );
 }
+
+export function ArtIcon({ className = base }: IconProps) {
+  return (
+    <svg aria-hidden viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="9" cy="9.5" r="1.3" />
+      <circle cx="15.5" cy="10" r="1.3" />
+      <path d="m7.5 17.5 3.4-4.4a2 2 0 0 1 3.1 0l2.4 3.1M15 15.5l1.4-1.4a2 2 0 0 1 2.6.3" />
+    </svg>
+  );
+}
