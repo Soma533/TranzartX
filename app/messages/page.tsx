@@ -2,10 +2,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
@@ -44,6 +44,7 @@ function MessagesInner() {
   const [starting, setStarting] = useState(false);
   const [sending, setSending] = useState(false);
   const [myId, setMyId] = useState<string | null>(null);
+  const boxRef = useRef<HTMLTextAreaElement>(null);
   const { push } = useToast();
 
   useEffect(() => {
@@ -158,6 +159,7 @@ function MessagesInner() {
         setMessages((m) => (m.some((x) => x.id === saved.id) ? m : [...m, saved]));
       }
       setDraft("");
+      if (boxRef.current) boxRef.current.style.height = "auto";
     } catch {
       push("Send failed — check your connection");
     } finally {
@@ -199,19 +201,36 @@ function MessagesInner() {
               {starting ? "Starting conversation…" : "Select or start a conversation."}
             </p>
           )}
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Input
+          <div className="flex items-end gap-2">
+            <Textarea
+              ref={boxRef}
+              rows={1}
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }}
-              placeholder={active ? "Write a professional message…" : to ? "Starting conversation — type, then Send…" : "Select a conversation first…"}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                // Auto-grow: 1 row up to ~8 rows, then scroll.
+                e.target.style.height = "auto";
+                e.target.style.height = `${Math.min(e.target.scrollHeight, 176)}px`;
+              }}
+              onKeyDown={(e) => {
+                // Enter inserts a line break; Ctrl/Cmd+Enter sends (WhatsApp-style).
+                if (e.key === "Enter" && !e.shiftKey && (e.ctrlKey || e.metaKey)) {
+                  e.preventDefault();
+                  void send();
+                }
+              }}
+              placeholder={active
+                ? "Write a professional message… (Enter for a new line, Ctrl+Enter to send)"
+                : to
+                  ? "Starting conversation — type, then Send…"
+                  : "Select a conversation first…"}
             />
             <Button
               type="button"
               onClick={send}
               disabled={sendDisabled}
-              title={sendDisabled && !draft.trim() ? "Type a message first" : !active && !to ? "Select a conversation first" : "Send message"}
-              className="sm:shrink-0"
+              title={sendDisabled && !draft.trim() ? "Type a message first" : !active && !to ? "Select a conversation first" : "Send message (Ctrl+Enter)"}
+              className="shrink-0"
             >
               {sending ? "Sending…" : starting ? "Starting…" : "Send"}
             </Button>
