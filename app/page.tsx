@@ -49,7 +49,7 @@ export default async function Home() {
           <Link href="/signup" className="rounded-xl border border-transparent bg-white px-4 py-2 text-sm font-medium text-orange-700 hover:bg-orange-50">
             Join as artist
           </Link>
-          <Link href="/discover" className="inline-flex items-center gap-2 rounded-xl border border-white/70 px-4 py-2 text-sm font-medium text-white hover:bg-white/10">
+          <Link href="/discover" className="inline-flex items-center gap-2 rounded-xl border border-transparent bg-white px-4 py-2 text-sm font-medium text-orange-700 hover:bg-orange-50">
             <CompassIcon className="h-4 w-4" />
             Discover art
           </Link>
