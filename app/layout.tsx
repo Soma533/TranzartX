@@ -8,7 +8,13 @@ import { Toaster } from "@/components/toaster";
 
 const manrope = Manrope({ subsets: ["latin"], display: "swap", variable: "--font-sans" });
 
-export const viewport: Viewport = { themeColor: "#c2410c", width: "device-width", initialScale: 1 };
+export const viewport: Viewport = {
+  themeColor: "#c2410c",
+  width: "device-width",
+  initialScale: 1,
+  // Lets env(safe-area-inset-bottom) report the iPhone home-indicator inset.
+  viewportFit: "cover"
+};
 
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://127.0.0.1:3000";
 

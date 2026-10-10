@@ -5,33 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { ChatThread, Composer, type Msg } from "@/components/chat-thread";
 import { useToast } from "@/hooks/use-toast";
-
-interface Msg { id: string; body: string; sender_id: string; created_at: string; delivered_at: string | null; read_at: string | null; }
-
-/** Chat bubble clock: time for today, "Yesterday 14:05" for older (PRD §18). */
-function stamp(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  const today = new Date();
-  const sameDay = d.toDateString() === today.toDateString();
-  if (sameDay) return time;
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  const prefix = d.toDateString() === yesterday.toDateString() ? "Yesterday " : `${d.toLocaleDateString([], { day: "numeric", month: "short" })} `;
-  return prefix + time;
-}
-
-/** WhatsApp-style ticks: ✓ sent, ✓✓ delivered, blue ✓✓ read. */
-function Ticks({ m, mine }: { m: Msg; mine: boolean }) {
-  if (!mine) return null;
-  if (m.read_at) return <span className="ml-2 text-sky-500">✓✓</span>;
-  if (m.delivered_at) return <span className="ml-2 text-muted-foreground">✓✓</span>;
-  return <span className="ml-2 text-muted-foreground">✓</span>;
-}
 
 function MessagesInner() {
   const router = useRouter();
@@ -45,7 +20,14 @@ function MessagesInner() {
   const [sending, setSending] = useState(false);
   const [myId, setMyId] = useState<string | null>(null);
   const boxRef = useRef<HTMLTextAreaElement>(null);
+  const endRef = useRef<HTMLDivElement>(null);
   const { push } = useToast();
+
+  // Keep the newest message in view as messages arrive (phone + desktop).
+  // scrollIntoView works for both the desktop scroller and the mobile page.
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ block: "end" });
+  }, [messages]);
 
   useEffect(() => {
     fetch("/api/profiles/me").then((r) => r.json()).then((j) => {
@@ -168,73 +150,51 @@ function MessagesInner() {
   }
 
   const sendDisabled = !draft.trim() || sending || starting;
-
   return (
     <div className="grid gap-4 md:grid-cols-3">
-      <Card>
+      {/* Phone: horizontal picker instead of a stacked list pushing chat off-screen. */}
+      <div className="md:hidden">
+        <p className="mb-2 text-sm font-semibold">Conversations</p>
+        {conversations.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No conversations yet � find people on the Network tab.</p>
+        ) : (
+          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+            {conversations.map((c) => (
+              <button
+                key={c.conversation_id}
+                onClick={() => setActive(c.conversation_id)}
+                className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-sm ${c.conversation_id === active ? "border-primary bg-primary text-white" : "bg-white"}`}
+              >
+                {c.with?.name ?? `${c.conversation_id.slice(0, 8)}�`}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <Card className="hidden md:block">
         <p className="font-semibold">Conversations</p>
         {conversations.map((c) => (
           <button key={c.conversation_id} onClick={() => setActive(c.conversation_id)} className={`mt-2 block w-full truncate rounded-lg border px-2 py-1 text-left text-sm ${c.conversation_id === active ? "bg-primary text-white" : ""}`}>
-            {c.with?.name ?? `${c.conversation_id.slice(0, 8)}…`}
+            {c.with?.name ?? `${c.conversation_id.slice(0, 8)}�`}
           </button>
         ))}
-        {conversations.length === 0 && <p className="mt-2 text-sm text-muted-foreground">No conversations yet — find people on the Network tab.</p>}
+        {conversations.length === 0 && <p className="mt-2 text-sm text-muted-foreground">No conversations yet � find people on the Network tab.</p>}
       </Card>
-      <Card className="md:col-span-2">
-        <div className="grid gap-2">
-          {messages.map((m) => {
-            const mine = myId !== null && m.sender_id === myId;
-            return (
-              <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${mine ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>
-                  <p className="whitespace-pre-wrap break-words">{m.body}</p>
-                  <span className={`mt-0.5 flex items-center justify-end gap-1 text-[10px] leading-none ${mine ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                    {stamp(m.created_at)}
-                    <Ticks m={m} mine={mine} />
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-          {!active && (
-            <p className="text-sm text-muted-foreground">
-              {starting ? "Starting conversation…" : "Select or start a conversation."}
-            </p>
-          )}
-          <div className="flex items-end gap-2">
-            <Textarea
-              ref={boxRef}
-              rows={1}
-              value={draft}
-              onChange={(e) => {
-                setDraft(e.target.value);
-                // Auto-grow: 1 row up to ~8 rows, then scroll.
-                e.target.style.height = "auto";
-                e.target.style.height = `${Math.min(e.target.scrollHeight, 176)}px`;
-              }}
-              onKeyDown={(e) => {
-                // Enter inserts a line break; Ctrl/Cmd+Enter sends (WhatsApp-style).
-                if (e.key === "Enter" && !e.shiftKey && (e.ctrlKey || e.metaKey)) {
-                  e.preventDefault();
-                  void send();
-                }
-              }}
-              placeholder={active
-                ? "Write a professional message… (Enter for a new line, Ctrl+Enter to send)"
-                : to
-                  ? "Starting conversation — type, then Send…"
-                  : "Select a conversation first…"}
-            />
-            <Button
-              type="button"
-              onClick={send}
-              disabled={sendDisabled}
-              title={sendDisabled && !draft.trim() ? "Type a message first" : !active && !to ? "Select a conversation first" : "Send message (Ctrl+Enter)"}
-              className="shrink-0"
-            >
-              {sending ? "Sending…" : starting ? "Starting…" : "Send"}
-            </Button>
-          </div>
+      <Card className="flex flex-col p-3 md:col-span-2 md:p-4">
+        <ChatThread messages={messages} myId={myId} active={active !== null} starting={starting} endRef={endRef} />
+        {/* Composer pinned above the keyboard/home indicator on phones. */}
+        <div className="sticky bottom-0 mt-2 bg-card pt-2" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+          <Composer
+            draft={draft}
+            setDraft={setDraft}
+            boxRef={boxRef}
+            send={send}
+            disabled={sendDisabled}
+            starting={starting}
+            sending={sending}
+            active={active !== null}
+            hasTarget={Boolean(to)}
+          />
         </div>
       </Card>
     </div>
@@ -243,7 +203,7 @@ function MessagesInner() {
 
 export default function MessagesPage() {
   return (
-    <Suspense fallback={<p className="text-sm text-muted-foreground">Loading messages…</p>}>
+    <Suspense fallback={<p className="text-sm text-muted-foreground">Loading messages�</p>}>
       <MessagesInner />
     </Suspense>
   );
