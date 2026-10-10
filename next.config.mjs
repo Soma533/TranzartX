@@ -11,6 +11,14 @@ const nextConfig = {
   experimental: {
     serverActions: { bodySizeLimit: "10mb" }
   },
+  async rewrites() {
+    return [
+      // Next treats folders starting with "." as private, so /.well-known must be
+      // routed to an API handler. Android requires this exact path for Digital
+      // Asset Links (Trusted Web Activity verification for the Android app).
+      { source: "/.well-known/assetlinks.json", destination: "/api/assetlinks" }
+    ];
+  },
   async headers() {
     return [
       {
