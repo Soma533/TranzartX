@@ -64,8 +64,6 @@ export function InstallButton({ compact = false }: { compact?: boolean }) {
     setShowIOSHelp(true);
   }
 
-  const label = deferred ? "Install app" : "Install app";
-
   return (
     <>
       <button
@@ -73,12 +71,13 @@ export function InstallButton({ compact = false }: { compact?: boolean }) {
         onClick={() => void install()}
         title="Install TranzartX on this device"
         aria-label="Install TranzartX on this device"
-        className={`inline-flex items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 ${compact ? "px-3 py-1.5 text-xs" : "px-4 py-2 text-sm"} font-medium`}
+        className={`inline-flex items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 ${compact ? "h-10 w-10 shrink-0 px-0 sm:w-auto sm:px-3" : "px-4 py-2 text-sm"} font-medium`}
       >
-        <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 3.5v11M8 11l4 4 4-4M4.5 17.5v1.2a1.8 1.8 0 0 0 1.8 1.8h11.4a1.8 1.8 0 0 0 1.8-1.8v-1.2" />
         </svg>
-        {label}
+        {/* Icon-only on phones so it fits beside the Menu button. */}
+        <span className={compact ? "hidden sm:inline" : ""}>Install app</span>
       </button>
 
       {showIOSHelp && (

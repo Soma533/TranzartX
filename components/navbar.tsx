@@ -43,7 +43,7 @@ export function Navbar() {
         <Link href="/" aria-label="TranzartX home"><Logo /></Link>
         {/* Laptops navigate via the left icon rail, so no text links here. */}
         <div className="flex items-center gap-2 text-sm">
-          <div className="hidden sm:block"><InstallButton compact /></div>
+          <InstallButton compact />
           {account !== false && <NotificationBell />}
           <div className="hidden items-center gap-2 lg:flex">
             <Link href="/settings" className="rounded-xl border px-3 py-1.5">Settings</Link>
@@ -65,7 +65,6 @@ export function Navbar() {
       </div>
       {open && (
         <nav aria-label="Primary" className="grid gap-1 border-t px-4 py-3 text-sm lg:hidden">
-          <div className="mb-1 sm:hidden"><InstallButton /></div>
           {account !== false && (
             <Link href="/notifications" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-2 py-1.5 font-medium text-foreground hover:bg-secondary">
               <HeartIcon className="h-5 w-5" />
