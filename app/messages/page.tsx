@@ -1,118 +1,32 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useSearchParams } from "next/navigation";
-import { Suspense, useRef } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { Card } from "@/components/ui/card";
-import { ChatThread, Composer, type Msg } from "@/components/chat-thread";
+import { Suspense } from "react";
+import { ChatThread, type Msg } from "@/components/chat-thread";
+import { Composer } from "@/components/chat-composer";
+import { ChatHeader } from "@/components/chat-header";
+import { ForwardDialog } from "@/components/forward-dialog";
+import { ConversationList } from "@/components/conversation-list";
+import { useMessages } from "@/hooks/use-messages";
 import { useToast } from "@/hooks/use-toast";
 
 function MessagesInner() {
-  const router = useRouter();
-  const search = useSearchParams();
-  const to = search.get("to");
-  const [conversations, setConversations] = useState<{ conversation_id: string; with?: { id: string; name: string } | null }[]>([]);
-  const [active, setActive] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Msg[]>([]);
-  const [draft, setDraft] = useState("");
-  const [starting, setStarting] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [myId, setMyId] = useState<string | null>(null);
-  const boxRef = useRef<HTMLTextAreaElement>(null);
-  const endRef = useRef<HTMLDivElement>(null);
   const { push } = useToast();
+  const router = useRouter();
+  const chat = useMessages(push);
+  const { conversations, active, setActive, messages, setMessages, lastReadAt, starting,
+    setStarting, myId, online, endRef, loadList, ensureConversation, to } = chat;
 
-  // Keep the newest message in view as messages arrive (phone + desktop).
-  // scrollIntoView works for both the desktop scroller and the mobile page.
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ block: "end" });
-  }, [messages]);
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [forwarding, setForwarding] = useState<Msg | null>(null);
+  const boxRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => {
-    fetch("/api/profiles/me").then((r) => r.json()).then((j) => {
-      if (j.profile) setMyId(j.profile.id as string);
-    }).catch(() => null);
-  }, []);
-
-  async function loadList(select?: string) {
-    const r = await fetch("/api/messages");
-    if (r.status === 401) { router.replace("/login"); return; }
-    const j = await r.json().catch(() => null);
-    const list = j?.conversations ?? [];
-    setConversations(list);
-    // Avoid the stale-closure `!active` check: prefer explicit select, else first.
-    setActive((prev) => select ?? prev ?? list[0]?.conversation_id ?? null);
-  }
-
-  async function ensureConversation(targetId: string): Promise<string | null> {
-    try {
-      const r = await fetch("/api/messages/conversations", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetId })
-      });
-      if (r.status === 401) { push("Log in to message"); router.replace("/login"); return null; }
-      const j = await r.json().catch(() => null);
-      if (j?.conversation_id) return j.conversation_id as string;
-      push(j?.error?.message ?? "Could not start conversation");
-      return null;
-    } catch {
-      push("Could not start conversation");
-      return null;
-    }
-  }
-
-  useEffect(() => {
-    // Deep link ?to=<profileId> starts (or reuses) a conversation — PRD §18.
-    let cancelled = false;
-    async function boot() {
-      if (to) {
-        setStarting(true);
-        const cid = await ensureConversation(to);
-        if (cancelled) return;
-        if (cid) await loadList(cid);
-        else await loadList();
-        if (!cancelled) setStarting(false);
-      } else {
-        await loadList();
-      }
-    }
-    void boot();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [to]);
-
-  useEffect(() => {
-    if (!active) return;
-    let cancelled = false;
-    fetch(`/api/messages?conversation=${active}`)
-      .then((r) => {
-        if (r.status === 401) { router.replace("/login"); return null; }
-        return r.json();
-      })
-      .then((j) => { if (!cancelled && j) setMessages(j.messages ?? []); })
-      .catch(() => null);
-    const supabase = createClient();
-    const ch = supabase.channel(`msg:${active}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${active}` }, (payload) => {
-        const incoming = payload.new as Msg;
-        // Dedupe against the optimistic append in send().
-        setMessages((m) => (m.some((x) => x.id === incoming.id) ? m : [...m, incoming]));
-      })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `conversation_id=eq.${active}` }, (payload) => {
-        // Tick flips (delivered/read) arrive live without refresh.
-        const updated = payload.new as Msg;
-        setMessages((m) => m.map((x) => (x.id === updated.id ? { ...x, delivered_at: updated.delivered_at, read_at: updated.read_at } : x)));
-      })
-      .subscribe();
-    return () => { cancelled = true; void supabase.removeChannel(ch); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active]);
+  const peer = conversations.find((c) => c.conversation_id === active)?.with ?? null;
 
   async function send() {
     if (!draft.trim() || sending || starting) return;
-    // Lazily (re)create the conversation so Send never silently no-ops when
-    // the deep-link start failed or hasn't finished yet.
     let cid = active;
     if (!cid) {
       if (!to) { push("Select or start a conversation first"); return; }
@@ -135,13 +49,14 @@ function MessagesInner() {
         push(j?.error?.message ?? "Send failed — sign in first");
         return;
       }
-      // Optimistic (server-confirmed) append: UI updates even if Realtime is off.
       if (j?.message) {
         const saved = j.message as Msg;
         setMessages((m) => (m.some((x) => x.id === saved.id) ? m : [...m, saved]));
       }
       setDraft("");
       if (boxRef.current) boxRef.current.style.height = "auto";
+      // Refresh the inbox so this thread jumps to the top.
+      void loadList(cid ?? undefined);
     } catch {
       push("Send failed — check your connection");
     } finally {
@@ -149,54 +64,124 @@ function MessagesInner() {
     }
   }
 
+  async function copyMessage(m: Msg) {
+    try {
+      await navigator.clipboard.writeText(m.body);
+      push("Copied to clipboard");
+    } catch {
+      push("Couldn't copy — select the text instead");
+    }
+  }
+
+  async function deleteMessage(m: Msg) {
+    const r = await fetch("/api/messages", {
+      method: "DELETE", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: m.id })
+    });
+    const j = await r.json().catch(() => null);
+    if (r.ok) {
+      setMessages((list) => list.map((x) => (x.id === m.id ? { ...x, deleted_at: new Date().toISOString() } : x)));
+      push("Message deleted");
+    } else {
+      push(j?.error?.message ?? "Delete failed");
+    }
+  }
+
+  async function saveEdit(id: string, body: string) {
+    const clean = body.trim();
+    setEditingId(null);
+    if (!clean) return;
+    const r = await fetch("/api/messages", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, body: clean })
+    });
+    const j = await r.json().catch(() => null);
+    if (r.ok && j?.message) {
+      const saved = j.message as Msg;
+      setMessages((list) => list.map((x) => (x.id === id ? { ...x, ...saved } : x)));
+      push("Message updated");
+    } else {
+      push(j?.error?.message ?? "Edit failed");
+    }
+  }
+
+  async function forwardTo(target: string) {
+    const m = forwarding;
+    setForwarding(null);
+    if (!m) return;
+    const r = await fetch("/api/messages", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: m.id, to: target })
+    });
+    const j = await r.json().catch(() => null);
+    if (r.ok) {
+      push("Message forwarded");
+      void loadList();
+    } else {
+      push(j?.error?.message ?? "Forward failed");
+    }
+  }
+
+  const actions = {
+    onEdit: (m: Msg) => setEditingId(m.id),
+    onDelete: (m: Msg) => void deleteMessage(m),
+    onForward: (m: Msg) => setForwarding(m),
+    onCopy: (m: Msg) => void copyMessage(m),
+    onSaveEdit: (id: string, body: string) => void saveEdit(id, body),
+    onCancelEdit: () => setEditingId(null)
+  };
+
   const sendDisabled = !draft.trim() || sending || starting;
+
   return (
-    <div className="grid gap-4 md:grid-cols-3">
-      {/* Phone: stacked vertical list, matching the desktop sidebar rhythm. */}
-      <div className="md:hidden">
-        <p className="mb-2 text-sm font-semibold">Conversations</p>
-        {conversations.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No conversations yet — find people on the Network tab.</p>
+    <div className="grid overflow-hidden rounded-2xl border md:h-[calc(100vh-11rem)] md:grid-cols-[320px_1fr]">
+      {/* Thread list — full width on phones, left rail on larger screens. */}
+      <section className={`overflow-y-auto border-r ${active ? "hidden md:block" : "block"}`} aria-label="Conversations">
+        <h1 className="border-b px-4 py-3 text-lg font-bold">Messages</h1>
+        <ConversationList items={conversations} active={active} onSelect={setActive} />
+      </section>
+
+      {/* Conversation */}
+      <section className={`flex min-h-[60vh] flex-col ${active ? "flex" : "hidden md:flex"}`} aria-label="Conversation">
+        {active ? (
+          <>
+            <ChatHeader peer={peer} isOnline={Boolean(online[peer?.id ?? ""])} onBack={() => setActive(null)} />
+            <div className="flex-1 overflow-y-auto px-3 py-3">
+              <ChatThread
+                messages={messages}
+                myId={myId}
+                active={active !== null}
+                starting={starting}
+                endRef={endRef}
+                editingId={editingId}
+                actions={actions}
+                lastReadAt={lastReadAt}
+              />
+            </div>
+            <div className="sticky bottom-0 border-t bg-white p-2" style={{ paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom))" }}>
+              <Composer
+                draft={draft}
+                setDraft={setDraft}
+                boxRef={boxRef}
+                send={send}
+                disabled={sendDisabled}
+                starting={starting}
+                sending={sending}
+                active={active !== null}
+                hasTarget={Boolean(to)}
+              />
+            </div>
+          </>
         ) : (
-          <div className="grid gap-1">
-            {conversations.map((c) => (
-              <button
-                key={c.conversation_id}
-                onClick={() => setActive(c.conversation_id)}
-                className={`block w-full truncate rounded-lg border px-3 py-2.5 text-left text-sm ${c.conversation_id === active ? "border-primary bg-primary text-white" : "bg-white"}`}
-              >
-                {c.with?.name ?? `${c.conversation_id.slice(0, 8)}…`}
-              </button>
-            ))}
+          <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
+            {starting ? "Starting conversation…" : "Select a conversation to start messaging."}
           </div>
         )}
-      </div>
-      <Card className="hidden md:block">
-        <p className="font-semibold">Conversations</p>
-        {conversations.map((c) => (
-          <button key={c.conversation_id} onClick={() => setActive(c.conversation_id)} className={`mt-2 block w-full truncate rounded-lg border px-2 py-1 text-left text-sm ${c.conversation_id === active ? "bg-primary text-white" : ""}`}>
-            {c.with?.name ?? `${c.conversation_id.slice(0, 8)}…`}
-          </button>
-        ))}
-        {conversations.length === 0 && <p className="mt-2 text-sm text-muted-foreground">No conversations yet — find people on the Network tab.</p>}
-      </Card>
-      <Card className="flex flex-col p-3 md:col-span-2 md:p-4">
-        <ChatThread messages={messages} myId={myId} active={active !== null} starting={starting} endRef={endRef} />
-        {/* Composer pinned above the keyboard/home indicator on phones. */}
-        <div className="sticky bottom-0 mt-2 bg-card pt-2" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-          <Composer
-            draft={draft}
-            setDraft={setDraft}
-            boxRef={boxRef}
-            send={send}
-            disabled={sendDisabled}
-            starting={starting}
-            sending={sending}
-            active={active !== null}
-            hasTarget={Boolean(to)}
-          />
-        </div>
-      </Card>
+      </section>
+
+      {forwarding && (
+        <ForwardDialog message={forwarding} people={conversations} onPick={forwardTo} onClose={() => setForwarding(null)} />
+      )}
     </div>
   );
 }
