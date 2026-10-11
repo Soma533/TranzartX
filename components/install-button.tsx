@@ -61,6 +61,32 @@ export function InstallButton({ compact = false }: { compact?: boolean }) {
       setDeferred(null);
       return;
     }
+    // The browser may not have raised beforeinstallprompt yet. Give it a brief
+    // window so a tap still installs immediately instead of showing instructions.
+    if (typeof window !== "undefined" && "onbeforeinstallprompt" in window) {
+      const arrived = await new Promise<BeforeInstallPromptEvent | null>((resolve) => {
+        const timer = window.setTimeout(() => {
+          window.removeEventListener("beforeinstallprompt", onEvent);
+          resolve(null);
+        }, 1500);
+        function onEvent(e: Event) {
+          window.clearTimeout(timer);
+          window.removeEventListener("beforeinstallprompt", onEvent);
+          e.preventDefault();
+          resolve(e as BeforeInstallPromptEvent);
+        }
+        window.addEventListener("beforeinstallprompt", onEvent);
+      });
+      if (arrived) {
+        setDeferred(arrived);
+        await arrived.prompt();
+        const choice = await arrived.userChoice;
+        if (choice.outcome === "accepted") setInstalled(true);
+        setDeferred(null);
+        return;
+      }
+    }
+    // Genuinely unsupported (iOS Safari, in-app browsers) — show the steps.
     setShowIOSHelp(true);
   }
 

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -7,13 +7,17 @@ import { useToast } from "@/hooks/use-toast";
 export function NotificationBell() {
   const [count, setCount] = useState(0);
   const { push } = useToast();
-  useEffect(() => {
-    let cancelled = false;
+
+  const refetch = useCallback(() => {
     fetch("/api/notifications").then((r) => r.json()).then((j) => {
-      if (cancelled) return;
       const unread = (j.notifications ?? []).filter((n: { read_at: string | null }) => !n.read_at).length;
       setCount(unread);
     }).catch(() => null);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    refetch();
     const supabase = createClient();
     // Unique per instance: navbar renders desktop + mobile bells at once.
     // Reusing the same channel name throws "cannot add callbacks after subscribe()".
@@ -24,12 +28,20 @@ export function NotificationBell() {
         setCount((c) => c + 1);
         push(n.title);
       })
+      // Opening the inbox flips read_at — recompute so the badge clears at once.
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "notifications" }, () => {
+        if (!cancelled) refetch();
+      })
       .subscribe();
+    // Belt and braces: the notifications page announces its own "all read".
+    const onRead = () => setCount(0);
+    window.addEventListener("notifications:read", onRead);
     return () => {
       cancelled = true;
+      window.removeEventListener("notifications:read", onRead);
       void supabase.removeChannel(ch);
     };
-  }, [push]);
+  }, [push, refetch]);
   const active = count > 0;
   return (
     <Link

@@ -13,6 +13,26 @@ interface NotificationItem {
   link: string | null;
   actor_id: string | null;
   read_at: string | null;
+  created_at: string;
+}
+
+/** "2 min ago", "Yesterday 14:05", or a date for older items. */
+function timeAgo(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const diff = Date.now() - d.getTime();
+  if (diff < 60_000) return "Just now";
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} min ago`;
+  const today = new Date();
+  if (d.toDateString() === today.toDateString()) {
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) {
+    return `Yesterday ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+  }
+  return d.toLocaleDateString([], { day: "numeric", month: "short", year: d.getFullYear() === today.getFullYear() ? undefined : "numeric" });
 }
 
 export default function NotificationsPage() {
@@ -27,7 +47,9 @@ export default function NotificationsPage() {
       .then((j) => setItems(j.notifications ?? []))
       .catch(() => null)
       .finally(() => {
-        // Opening the inbox clears the badge: mark everything read.
+        // Opening the inbox clears the badge immediately.
+        setItems((list) => list.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })));
+        window.dispatchEvent(new Event("notifications:read"));
         fetch("/api/notifications", { method: "PATCH" }).catch(() => null);
       });
   }, []);
@@ -61,7 +83,16 @@ export default function NotificationsPage() {
         const done = n.actor_id ? followed.has(n.actor_id) : false;
         return (
           <Card key={n.id} className={n.read_at ? "opacity-70" : ""}>
-            <p className="text-sm font-medium">{n.title}</p>
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-sm font-medium">{n.title}</p>
+              <time
+                dateTime={n.created_at}
+                title={new Date(n.created_at).toLocaleString()}
+                className="shrink-0 text-[11px] text-muted-foreground"
+              >
+                {timeAgo(n.created_at)}
+              </time>
+            </div>
             {n.body && <p className="text-sm text-muted-foreground">{n.body}</p>}
             <div className="mt-2 flex gap-2">
               {isFollow && n.actor_id && (

@@ -1,10 +1,12 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Input, Textarea } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 export default function OnboardingPage() {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [country, setCountry] = useState("");
   const [discipline, setDiscipline] = useState("");
@@ -19,7 +21,8 @@ export default function OnboardingPage() {
       body: JSON.stringify({ name, role, location_country: country, disciplines: discipline ? [discipline] : [], bio: draft || undefined })
     });
     if (r.ok) {
-      setMsg("Profile saved — welcome to TranzartX.");
+      // Profile is set — move the new member straight into the app.
+      router.push("/today");
     } else if (r.status === 401) {
       setMsg("Session expired — log in again, then retry.");
     } else {

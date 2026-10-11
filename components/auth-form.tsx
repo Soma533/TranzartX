@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createClient } from "@/lib/supabase/client";
+import { landingForCurrentUser } from "@/lib/landing";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -47,8 +48,8 @@ export function AuthForm({ mode, notice }: { mode: "login" | "signup"; notice?: 
   });
 
   useEffect(() => {
-    createClient().auth.getSession().then(({ data }) => {
-      if (data.session) router.replace("/today");
+    createClient().auth.getSession().then(async ({ data }) => {
+      if (data.session) router.replace(await landingForCurrentUser());
       else setChecking(false);
     });
   }, [router]);
@@ -65,7 +66,8 @@ export function AuthForm({ mode, notice }: { mode: "login" | "signup"; notice?: 
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email: values.email, password: values.password });
         if (error) throw error;
-        router.replace("/today");
+        // First-time members go straight to profile setup.
+        router.replace(await landingForCurrentUser());
       }
     } catch (err) {
       setServerMsg(friendly(err instanceof Error ? err.message : "Something went wrong"));
@@ -76,7 +78,7 @@ export function AuthForm({ mode, notice }: { mode: "login" | "signup"; notice?: 
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=/today` }
+      options: { redirectTo: `${window.location.origin}/auth/callback` }
     });
   }
 

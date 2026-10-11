@@ -39,10 +39,21 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-40 border-b bg-white/90 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+      <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
+        {/* Instagram-style hamburger, far left on phones. */}
+        <button
+          className="-ml-1 rounded-xl p-2 hover:bg-secondary lg:hidden"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-label={open ? "Close menu" : "Open menu"}
+        >
+          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden>
+            {open ? <path d="M6 6l12 12M18 6 6 18" /> : <path d="M3.5 7h17M3.5 12h17M3.5 17h17" />}
+          </svg>
+        </button>
         <Link href="/" aria-label="TranzartX home"><Logo /></Link>
         {/* Laptops navigate via the left icon rail, so no text links here. */}
-        <div className="flex items-center gap-2 text-sm">
+        <div className="ml-auto flex items-center gap-2 text-sm">
           <InstallButton compact />
           {account !== false && <NotificationBell />}
           <div className="hidden items-center gap-2 lg:flex">
@@ -58,9 +69,6 @@ export function Navbar() {
               </>
             )}
           </div>
-          <button className="rounded-xl border px-3 py-1.5 lg:hidden" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label="Menu">
-            {open ? "Close" : "Menu"}
-          </button>
         </div>
       </div>
       {open && (

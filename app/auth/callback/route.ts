@@ -1,12 +1,14 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { landingFor } from "@/lib/landing";
 
-/** OAuth callback — exchanges code for session. */
+/** OAuth callback — exchanges code for session, then routes by profile state. */
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const next = url.searchParams.get("next") ?? "/today";
+  const requested = url.searchParams.get("next");
+
   if (code) {
     const cookieStore = await cookies();
     const supabase = createServerClient(
@@ -21,6 +23,16 @@ export async function GET(request: Request) {
       }
     );
     await supabase.auth.exchangeCodeForSession(code);
+
+    // New Google members still need profile setup before the dashboard.
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("profile_completeness")
+      .eq("user_id", user?.id ?? "")
+      .maybeSingle();
+    const target = requested ?? landingFor((profile as { profile_completeness: number } | null)?.profile_completeness);
+    return NextResponse.redirect(new URL(target, url.origin));
   }
-  return NextResponse.redirect(new URL(next, url.origin));
+  return NextResponse.redirect(new URL(requested ?? "/login", url.origin));
 }
