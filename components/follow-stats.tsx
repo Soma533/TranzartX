@@ -67,7 +67,7 @@ export function FollowStats({ profileId }: { profileId: string }) {
       {tab && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center" onClick={() => setTab(null)}>
           <div
-            className="w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-xl"
+            className="w-full max-w-sm overflow-hidden rounded-2xl bg-background shadow-xl"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-label={tab === "followers" ? "Followers" : "Following"}

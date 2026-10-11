@@ -30,7 +30,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="mx-auto max-w-md rounded-3xl border bg-white p-8">
+    <div className="mx-auto max-w-md rounded-3xl border bg-background p-8">
       <h1 className="text-xl font-bold">Reset password</h1>
       <p className="mt-1 text-sm text-muted-foreground">We&apos;ll email you a link to choose a new password.</p>
       <form onSubmit={submit} className="mt-4 grid gap-3">

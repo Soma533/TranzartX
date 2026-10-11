@@ -54,7 +54,7 @@ export function NotificationBell() {
         <path d="M12 20.5 4.2 13a4.6 4.6 0 0 1 0-6.6 4.9 4.9 0 0 1 7 0 4.9 4.9 0 0 1 7 0 4.6 4.6 0 0 1 0 6.6z" />
       </svg>
       {active && (
-        <span className="absolute -right-1 -top-1 min-w-[18px] rounded-full bg-primary px-1 text-center text-[10px] font-semibold leading-[18px] text-white">
+        <span className="absolute -right-1 -top-1 min-w-[18px] rounded-full bg-primary px-1 text-center text-[10px] font-semibold leading-[18px] text-primary-foreground">
           {count > 9 ? "9+" : count}
         </span>
       )}

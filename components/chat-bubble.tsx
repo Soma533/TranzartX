@@ -191,11 +191,11 @@ function EditBox({ message, onSave, onCancel }: {
         rows={2}
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        className="w-full rounded-lg border border-border bg-white/90 px-2 py-1 text-sm text-foreground"
+        className="w-full rounded-lg border border-border bg-background/90 px-2 py-1 text-sm text-foreground"
       />
       <div className="flex justify-end gap-2 text-xs">
         <button onClick={onCancel} className="rounded-lg px-2 py-1 text-muted-foreground">Cancel</button>
-        <button onClick={() => onSave(message.id, value)} className="rounded-lg bg-primary px-2 py-1 text-white">Save</button>
+        <button onClick={() => onSave(message.id, value)} className="rounded-lg bg-primary px-2 py-1 text-primary-foreground">Save</button>
       </div>
     </div>
   );

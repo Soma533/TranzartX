@@ -1,7 +1,7 @@
 /** Privacy policy (required for Google OAuth publishing). Plain-language summary. */
 export default function PrivacyPage() {
   return (
-    <div className="mx-auto grid max-w-2xl gap-4 rounded-3xl border bg-white p-8">
+    <div className="mx-auto grid max-w-2xl gap-4 rounded-3xl border bg-background p-8">
       <p className="text-sm uppercase tracking-widest text-primary">TranzartX</p>
       <h1 className="text-2xl font-bold">Privacy Policy</h1>
       <p className="text-sm text-muted-foreground">Last updated: October 2026</p>

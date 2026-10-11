@@ -168,7 +168,7 @@ function MessagesInner() {
                 lastReadAt={lastReadAt}
               />
             </div>
-            <div className="sticky bottom-0 border-t bg-white p-2" style={{ paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom))" }}>
+            <div className="sticky bottom-0 border-t bg-background p-2" style={{ paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom))" }}>
               <ReplyBar target={replyTo} onCancel={() => setReplyTo(null)} />
               <Composer
                 draft={draft}

@@ -12,7 +12,7 @@ export function ForwardDialog({ message, people, onPick, onClose }: {
   const targets = people.filter((c) => c.with);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div className="w-full max-w-sm overflow-hidden rounded-2xl bg-white" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Forward message">
+      <div className="w-full max-w-sm overflow-hidden rounded-2xl bg-background" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Forward message">
         <p className="border-b px-4 py-3 text-sm font-semibold">Forward to…</p>
         <p className="max-h-24 overflow-y-auto bg-secondary/60 px-4 py-2 text-xs italic text-muted-foreground">
           “{message.body.slice(0, 120)}{message.body.length > 120 ? "…" : ""}”

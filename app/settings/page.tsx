@@ -157,7 +157,7 @@ export default function SettingsPage() {
             <CardTitle>Verification</CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">Verified profiles earn buyer and gallery trust. Tell us what to verify.</p>
             <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-              <select value={vKind} onChange={(e) => setVKind(e.target.value)} className="rounded-xl border bg-background px-2 py-2 text-sm">
+              <select value={vKind} onChange={(e) => setVKind(e.target.value)} className="rounded-xl border bg-background px-2 py-2 text-sm text-foreground">
                 <option value="IDENTITY">Artist identity</option>
                 <option value="EXHIBITION">Exhibition history</option>
                 <option value="GALLERY">Gallery affiliation</option>

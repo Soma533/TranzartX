@@ -100,7 +100,7 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="mx-auto max-w-md rounded-3xl border bg-white p-8">
+    <div className="mx-auto max-w-md rounded-3xl border bg-background p-8">
       <h1 className="text-xl font-bold">Choose a new password</h1>
       {link === "checking" && <p className="mt-4 text-sm text-muted-foreground">Verifying your reset link…</p>}
       {link === "need-email" && (
@@ -114,7 +114,7 @@ export default function ResetPasswordPage() {
       {link === "invalid" && (
         <div className="mt-4 grid gap-3">
           <p className="text-sm text-muted-foreground">{msg ?? "This reset link is invalid or expired."}</p>
-          <Link href="/forgot-password" className="rounded-xl bg-primary px-4 py-2 text-center text-sm text-white">Request a fresh link</Link>
+          <Link href="/forgot-password" className="rounded-xl bg-primary px-4 py-2 text-center text-sm text-primary-foreground">Request a fresh link</Link>
         </div>
       )}
       {link === "ready" && (

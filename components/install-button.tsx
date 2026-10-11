@@ -115,7 +115,7 @@ export function InstallButton({ compact = false }: { compact?: boolean }) {
           onClick={() => setShowIOSHelp(false)}
         >
           <div
-            className="w-full max-w-sm rounded-2xl bg-white p-5"
+            className="w-full max-w-sm rounded-2xl bg-background p-5"
             onClick={(e) => e.stopPropagation()}
           >
             <p className="text-lg font-semibold">Install TranzartX</p>
@@ -132,7 +132,7 @@ export function InstallButton({ compact = false }: { compact?: boolean }) {
             <button
               type="button"
               onClick={() => setShowIOSHelp(false)}
-              className="mt-4 w-full rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white"
+              className="mt-4 w-full rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
             >
               Got it
             </button>

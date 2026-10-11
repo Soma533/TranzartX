@@ -119,7 +119,7 @@ export function AuthForm({ mode, notice }: { mode: "login" | "signup"; notice?: 
   if (checking) return <p className="mx-auto max-w-md py-10 text-center text-sm text-muted-foreground">Checking session…</p>;
 
   return (
-    <div className="mx-auto max-w-md rounded-3xl border bg-white p-8">
+    <div className="mx-auto max-w-md rounded-3xl border bg-background p-8">
       <p className="text-sm uppercase tracking-widest text-primary">TranzartX</p>
       <h1 className="mt-1 text-2xl font-bold">{mode === "signup" ? "Join TranzartX" : "Welcome back"}</h1>
       <p className="mt-1 text-sm text-muted-foreground">
@@ -134,7 +134,7 @@ export function AuthForm({ mode, notice }: { mode: "login" | "signup"; notice?: 
               {errors.name && <p className="mt-1 text-xs text-destructive">{errors.name.message}</p>}
             </div>
             <div>
-              <select {...register("role")} className="w-full rounded-xl border border-border bg-white px-3 py-2 text-sm" aria-label="I am joining as">
+              <select {...register("role")} className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground" aria-label="I am joining as">
                 {ROLE_LABELS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
               </select>
             </div>

@@ -45,7 +45,7 @@ export default function OnboardingPage() {
       <Card>
         <div className="grid gap-2">
           <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
-          <select value={role} onChange={(e) => setRole(e.target.value)} className="rounded-xl border border-border bg-white px-3 py-2 text-sm" aria-label="I am joining as">
+          <select value={role} onChange={(e) => setRole(e.target.value)} className="rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground" aria-label="I am joining as">
             <option value="ARTIST">Artist</option>
             <option value="COLLECTOR">Collector</option>
             <option value="GALLERY">Gallery</option>

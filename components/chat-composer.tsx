@@ -51,7 +51,7 @@ export function Composer({ draft, setDraft, boxRef, send, disabled, starting, se
         disabled={disabled}
         aria-label="Send message"
         title={disabled && !draft.trim() ? "Type a message first" : !active && !hasTarget ? "Select a conversation first" : "Send message (Ctrl+Enter)"}
-        className="h-10 w-10 shrink-0 rounded-full border-0 bg-primary px-0 text-white hover:opacity-90"
+        className="h-10 w-10 shrink-0 rounded-full border-0 bg-primary px-0 text-primary-foreground hover:opacity-90"
       >
         {sending || starting ? (
           <svg aria-hidden viewBox="0 0 24 24" className="h-5 w-5 animate-spin" fill="none" stroke="currentColor" strokeWidth="3">

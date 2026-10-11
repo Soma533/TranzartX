@@ -1,7 +1,7 @@
 /** Terms of Service (required for Google OAuth publishing). */
 export default function TermsPage() {
   return (
-    <div className="mx-auto grid max-w-2xl gap-4 rounded-3xl border bg-white p-8">
+    <div className="mx-auto grid max-w-2xl gap-4 rounded-3xl border bg-background p-8">
       <p className="text-sm uppercase tracking-widest text-primary">TranzartX</p>
       <h1 className="text-2xl font-bold">Terms of Service</h1>
       <p className="text-sm text-muted-foreground">Last updated: October 2026</p>

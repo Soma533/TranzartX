@@ -16,7 +16,7 @@ function Skeleton() {
   return (
     <div className="grid gap-4 md:grid-cols-3">
       {[0, 1, 2].map((i) => (
-        <div key={i} className="animate-pulse rounded-2xl border bg-white p-3">
+        <div key={i} className="animate-pulse rounded-2xl border bg-background p-3">
           <div className="h-48 rounded-xl bg-secondary" />
           <div className="mt-2 h-4 w-2/3 rounded bg-secondary" />
         </div>

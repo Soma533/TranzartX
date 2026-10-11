@@ -36,7 +36,7 @@ export function PortfolioSettings({ form, set, toggleCollab }: Props) {
         <p className="mt-1 text-sm text-muted-foreground">Applied to each new artwork you upload.</p>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           <Field label="Default currency">
-            <select value={form.default_currency} onChange={(e) => set("default_currency", e.target.value)} className="rounded-xl border bg-background px-3 py-2 text-sm">
+            <select value={form.default_currency} onChange={(e) => set("default_currency", e.target.value)} className="rounded-xl border bg-background px-3 py-2 text-sm text-foreground">
               <option value="NGN">NGN — Nigerian Naira</option>
               <option value="GHS">GHS — Ghanaian Cedi</option>
               <option value="ZAR">ZAR — South African Rand</option>
@@ -47,7 +47,7 @@ export function PortfolioSettings({ form, set, toggleCollab }: Props) {
             </select>
           </Field>
           <Field label="Default availability">
-            <select value={form.default_availability} onChange={(e) => set("default_availability", e.target.value)} className="rounded-xl border bg-background px-3 py-2 text-sm">
+            <select value={form.default_availability} onChange={(e) => set("default_availability", e.target.value)} className="rounded-xl border bg-background px-3 py-2 text-sm text-foreground">
               <option value="AVAILABLE">Available</option>
               <option value="RESERVED">Reserved</option>
               <option value="SOLD">Sold</option>
@@ -92,7 +92,7 @@ export function InquirySettings({ form, set }: { form: SettingsForm; set: Props[
         <CardTitle>Response expectations</CardTitle>
         <div className="mt-2 grid gap-2">
           <Field label="Typical reply time">
-            <select value={form.inquiry_response_time} onChange={(e) => set("inquiry_response_time", e.target.value)} className="rounded-xl border bg-background px-3 py-2 text-sm">
+            <select value={form.inquiry_response_time} onChange={(e) => set("inquiry_response_time", e.target.value)} className="rounded-xl border bg-background px-3 py-2 text-sm text-foreground">
               <option value="Within hours">Within hours</option>
               <option value="1-2 days">1-2 days</option>
               <option value="3-5 days">3-5 days</option>

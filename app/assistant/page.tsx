@@ -49,7 +49,7 @@ export default function AssistantPage() {
       {turns.length === 0 && (
         <div className="grid gap-2">
           {STARTERS.map((s) => (
-            <button key={s} onClick={() => ask(s)} className="rounded-xl border bg-white px-4 py-2 text-left text-sm hover:bg-secondary">
+            <button key={s} onClick={() => ask(s)} className="rounded-xl border bg-background px-4 py-2 text-left text-sm hover:bg-secondary">
               {s}
             </button>
           ))}

@@ -38,7 +38,7 @@ export function Navbar() {
   const authed = typeof account === "string";
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
         {/* Instagram-style hamburger, far left on phones. */}
         <button
@@ -65,7 +65,7 @@ export function Navbar() {
             ) : (
               <>
                 <Link href="/login" className="rounded-xl border px-3 py-1.5">Log in</Link>
-                <Link href="/signup" className="rounded-xl bg-primary px-3 py-1.5 text-white">Join</Link>
+                <Link href="/signup" className="rounded-xl bg-primary px-3 py-1.5 text-primary-foreground">Join</Link>
               </>
             )}
           </div>
@@ -90,7 +90,7 @@ export function Navbar() {
             ) : (
               <>
                 <Link href="/login" onClick={() => setOpen(false)} className="rounded-xl border px-3 py-1.5">Log in</Link>
-                <Link href="/signup" onClick={() => setOpen(false)} className="rounded-xl bg-primary px-3 py-1.5 text-white">Join</Link>
+                <Link href="/signup" onClick={() => setOpen(false)} className="rounded-xl bg-primary px-3 py-1.5 text-primary-foreground">Join</Link>
               </>
             )}
           </div>

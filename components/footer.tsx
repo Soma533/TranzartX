@@ -7,7 +7,7 @@ import Link from "next/link";
  */
 export function Footer() {
   return (
-    <footer className="mt-16 border-t bg-white">
+    <footer className="mt-16 border-t bg-background">
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-3 px-4 py-6 text-center sm:flex-row sm:justify-between sm:text-left">
         <p className="text-xs text-muted-foreground">
           © {new Date().getFullYear()} TranzartX. Built for emerging African artists.
