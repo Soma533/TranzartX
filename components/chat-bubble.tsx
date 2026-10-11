@@ -1,63 +1,101 @@
 "use client";
-import { useState } from "react";
-import { useSwipeReply } from "@/hooks/use-swipe-reply";
+import { useRef, useState } from "react";
+import type { RefObject } from "react";
+import { Textarea } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import type { Msg } from "@/components/chat-thread";
+
+const THRESHOLD = 60; // px of rightward drag that arms a reply
+const MAX_DRAG = 88;
+const HOLD_MS = 450; // press-and-hold duration that opens the action sheet
+
+interface Handlers {
+  onPointerDown: (e: React.PointerEvent) => void;
+  onPointerMove: (e: React.PointerEvent) => void;
+  onPointerUp: () => void;
+  onPointerCancel: () => void;
+  onContextMenu: (e: React.MouseEvent) => void;
+  style: { touchAction: "pan-y"; userSelect: "none" };
+}
+
+/**
+ * Combines the two gestures on a bubble:
+ *  - swipe RIGHT to reply (touch and mouse drag)
+ *  - press and HOLD (or right-click) to open the action sheet
+ * A hold that turns into a swipe is ignored, so the two never fight.
+ */
+export function useBubbleGestures(onReply: () => void, onHold: () => void) {
+  const [drag, setDrag] = useState(0);
+  const startX = useRef<number | null>(null);
+  const timer = useRef<number | null>(null);
+  const held = useRef(false);
+  const replied = useRef(false);
+
+  const clearTimer = () => {
+    if (timer.current !== null) {
+      window.clearTimeout(timer.current);
+      timer.current = null;
+    }
+  };
+
+  const handlers: Handlers = {
+    onPointerDown(e) {
+      if (e.button !== 0) return;
+      startX.current = e.clientX;
+      held.current = false;
+      replied.current = false;
+      // Desktop left-click should not instantly open the sheet; touch does.
+      if (e.pointerType !== "mouse") {
+        timer.current = window.setTimeout(() => {
+          held.current = true;
+          onHold();
+        }, HOLD_MS);
+      }
+    },
+    onPointerMove(e) {
+      if (startX.current === null) return;
+      const dx = e.clientX - startX.current;
+      if (dx <= 0) {
+        if (drag !== 0) setDrag(0);
+        return;
+      }
+      // Movement means the user is swiping, not holding.
+      if (held.current) return;
+      if (Math.abs(dx) > 8) clearTimer();
+      const next = Math.min(dx, MAX_DRAG);
+      setDrag(next);
+      if (next >= THRESHOLD && !replied.current) {
+        replied.current = true;
+        clearTimer();
+        onReply();
+      }
+    },
+    onPointerUp() {
+      clearTimer();
+      startX.current = null;
+      if (drag !== 0) window.setTimeout(() => setDrag(0), 120);
+    },
+    onPointerCancel() {
+      clearTimer();
+      startX.current = null;
+      if (drag !== 0) setDrag(0);
+    },
+    onContextMenu(e) {
+      // Right-click is the desktop equivalent of press-and-hold.
+      e.preventDefault();
+      onHold();
+    },
+    style: { touchAction: "pan-y", userSelect: "none" }
+  };
+
+  return { drag, swiping: drag > 0, handlers };
+}
 
 /** WhatsApp-style ticks: ✓ sent, ✓✓ delivered, blue ✓✓ read. */
 function Ticks({ m }: { m: Msg }) {
   if (m.read_at) return <span className="text-sky-500">✓✓</span>;
   if (m.delivered_at) return <span className="text-muted-foreground">✓✓</span>;
   return <span className="text-muted-foreground">✓</span>;
-}
-
-/** Per-message action menu: copy / reply / edit / delete / forward. */
-function MessageActions({ m, mine, actions }: {
-  m: Msg;
-  mine: boolean;
-  actions: {
-    onReply: (m: Msg) => void;
-    onEdit: (m: Msg) => void;
-    onDelete: (m: Msg) => void;
-    onForward: (m: Msg) => void;
-    onCopy: (m: Msg) => void;
-  };
-}) {
-  const [open, setOpen] = useState(false);
-  const item = "block w-full px-3 py-2 text-left text-xs hover:bg-secondary";
-  return (
-    <div className="relative shrink-0">
-      <button
-        type="button"
-        aria-label="Message options"
-        onClick={() => setOpen((o) => !o)}
-        className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground hover:bg-black/10"
-      >
-        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden>
-          <circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" />
-        </svg>
-      </button>
-      {open && (
-        <>
-          <button type="button" aria-label="Close menu" className="fixed inset-0 z-10 cursor-default" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-7 z-20 w-40 overflow-hidden rounded-xl border bg-white py-1 shadow-lg">
-            <button className={item} onClick={() => { setOpen(false); actions.onCopy(m); }}>Copy text</button>
-            {!m.deleted_at && (
-              <button className={item} onClick={() => { setOpen(false); actions.onReply(m); }}>Reply</button>
-            )}
-            {mine && !m.deleted_at && (
-              <button className={item} onClick={() => { setOpen(false); actions.onEdit(m); }}>Edit</button>
-            )}
-            {mine && !m.deleted_at && (
-              <button className={`${item} text-destructive`} onClick={() => { setOpen(false); actions.onDelete(m); }}>Delete</button>
-            )}
-            {!m.deleted_at && (
-              <button className={item} onClick={() => { setOpen(false); actions.onForward(m); }}>Forward</button>
-            )}
-          </div>
-        </>
-      )}
-    </div>
-  );
 }
 
 interface BubbleProps {
@@ -68,21 +106,24 @@ interface BubbleProps {
   editing: boolean;
   onSaveEdit: (id: string, body: string) => void;
   onCancelEdit: () => void;
-  actions: Parameters<typeof MessageActions>[0]["actions"];
+  onReply: (m: Msg) => void;
+  onOpenActions: (m: Msg) => void;
 }
 
-/** A single message bubble: swipe right (or use the ⋮ menu) to reply. */
-export function MessageBubble({ m, mine, isNew, replyTo, editing, onSaveEdit, onCancelEdit, actions }: BubbleProps) {
-  const swipe = useSwipeReply(() => actions.onReply(m));
+/** A single message bubble. No permanent dots — hold, right-click or hover. */
+export function MessageBubble({ m, mine, isNew, replyTo, editing, onSaveEdit, onCancelEdit, onReply, onOpenActions }: BubbleProps) {
+  const { drag, swiping, handlers } = useBubbleGestures(
+    () => onReply(m),
+    () => onOpenActions(m)
+  );
 
   return (
-    <div className={`relative flex items-end gap-1 ${mine ? "justify-end" : "justify-start"}`}>
-      {/* Reply arrow revealed behind the bubble while dragging right. */}
-      {swipe.swiping && (
+    <div className={`group relative flex items-end ${mine ? "justify-end" : "justify-start"}`}>
+      {swiping && (
         <span
           aria-hidden
           className="pointer-events-none absolute left-0 flex h-7 w-7 items-center justify-center rounded-full text-primary"
-          style={{ transform: `translateX(${swipe.drag - 28}px)` }}
+          style={{ transform: `translateX(${drag - 28}px)` }}
         >
           <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 10L4 15l5 5M4 15h11a5 5 0 0 0 5-5V4" />
@@ -90,15 +131,25 @@ export function MessageBubble({ m, mine, isNew, replyTo, editing, onSaveEdit, on
         </span>
       )}
 
-      <div
-        {...swipe.handlers}
-        className={`flex items-end gap-1 ${isNew ? "rounded-xl bg-accent/60 px-1" : ""}`}
+      {/* Desktop-only hover affordance; hidden on touch devices. */}
+      <button
+        type="button"
+        aria-label="Message actions"
+        onClick={() => onOpenActions(m)}
+        className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-0 transition-opacity hover:bg-black/10 focus:opacity-100 group-hover:opacity-100 [@media(pointer:fine)]:inline-flex"
       >
-        {!mine && <MessageActions m={m} mine={false} actions={actions} />}
+        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden>
+          <circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" />
+        </svg>
+      </button>
 
+      <div
+        {...handlers}
+        className={`rounded-2xl px-3 py-2 text-sm transition-transform ${isNew ? "bg-accent/60" : ""}`}
+        style={drag ? { transform: `translateX(${drag}px)` } : undefined}
+      >
         <div
-          className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm transition-transform ${mine ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
-          style={swipe.drag ? { transform: `translateX(${swipe.drag}px)` } : undefined}
+          className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${mine ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
         >
           {m.deleted_at ? (
             <p className="italic opacity-60">This message was deleted</p>
@@ -121,8 +172,6 @@ export function MessageBubble({ m, mine, isNew, replyTo, editing, onSaveEdit, on
             {mine && !m.deleted_at && <Ticks m={m} />}
           </span>
         </div>
-
-        {mine && <MessageActions m={m} mine actions={actions} />}
       </div>
     </div>
   );

@@ -8,6 +8,7 @@ import { ChatHeader } from "@/components/chat-header";
 import { ForwardDialog } from "@/components/forward-dialog";
 import { ConversationList } from "@/components/conversation-list";
 import { ReplyBar } from "@/components/reply-bar";
+import { MessageActionsSheet } from "@/components/message-actions-sheet";
 import { useMessages } from "@/hooks/use-messages";
 import { useToast } from "@/hooks/use-toast";
 
@@ -23,6 +24,8 @@ function MessagesInner() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [forwarding, setForwarding] = useState<Msg | null>(null);
   const [replyTo, setReplyTo] = useState<Msg | null>(null);
+  const [actionFor, setActionFor] = useState<Msg | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const boxRef = useRef<HTMLTextAreaElement>(null);
 
   const peer = conversations.find((c) => c.conversation_id === active)?.with ?? null;
@@ -77,11 +80,13 @@ function MessagesInner() {
   }
 
   async function deleteMessage(m: Msg) {
+    setDeleting(true);
     const r = await fetch("/api/messages", {
       method: "DELETE", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: m.id })
     });
     const j = await r.json().catch(() => null);
+    setDeleting(false);
     if (r.ok) {
       setMessages((list) => list.map((x) => (x.id === m.id ? { ...x, deleted_at: new Date().toISOString() } : x)));
       push("Message deleted");
@@ -126,8 +131,9 @@ function MessagesInner() {
   }
 
   const actions = {
-    onReply: (m: Msg) => { setReplyTo(m); boxRef.current?.focus(); },
-    onEdit: (m: Msg) => setEditingId(m.id),
+    onOpenActions: (m: Msg) => setActionFor(m),
+    onReply: (m: Msg) => { setActionFor(null); setReplyTo(m); boxRef.current?.focus(); },
+    onEdit: (m: Msg) => { setActionFor(null); setEditingId(m.id); },
     onDelete: (m: Msg) => void deleteMessage(m),
     onForward: (m: Msg) => setForwarding(m),
     onCopy: (m: Msg) => void copyMessage(m),
@@ -187,6 +193,18 @@ function MessagesInner() {
       {forwarding && (
         <ForwardDialog message={forwarding} people={conversations} onPick={forwardTo} onClose={() => setForwarding(null)} />
       )}
+
+      <MessageActionsSheet
+        message={actionFor}
+        mine={actionFor !== null && actionFor.sender_id === myId}
+        busy={deleting}
+        onReply={actions.onReply}
+        onCopy={actions.onCopy}
+        onEdit={actions.onEdit}
+        onForward={actions.onForward}
+        onDelete={(m) => { setActionFor(null); void deleteMessage(m); }}
+        onClose={() => setActionFor(null)}
+      />
     </div>
   );
 }

@@ -68,6 +68,7 @@ interface ThreadProps {
     onDelete: (m: Msg) => void;
     onForward: (m: Msg) => void;
     onCopy: (m: Msg) => void;
+    onOpenActions: (m: Msg) => void;
     onSaveEdit: (id: string, body: string) => void;
     onCancelEdit: () => void;
   };
@@ -101,7 +102,8 @@ export function ChatThread({ messages, myId, active, starting, endRef, editingId
               editing={editingId === m.id}
               onSaveEdit={actions.onSaveEdit}
               onCancelEdit={actions.onCancelEdit}
-              actions={actions}
+              onReply={actions.onReply}
+              onOpenActions={actions.onOpenActions}
             />
           </div>
         );
