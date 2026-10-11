@@ -4,6 +4,7 @@ import { messageSchema } from "@/schemas";
 import { requireUser } from "@/services/auth-guard";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { sanitizeText } from "@/lib/sanitize";
+import { conversationList } from "@/app/api/messages/inbox";
 import { apiError } from "@/lib/logger";
 
 const editSchema = z.object({ id: z.string().uuid(), body: z.string().min(1).max(4000) });
@@ -33,56 +34,6 @@ export async function GET(request: Request) {
     return Response.json({ messages: fresh ?? data });
   }
   return conversationList(supabase, profileId ?? "");
-}
-
-/** Inbox: newest activity first, with last message + unread count per thread. */
-async function conversationList(supabase: SupabaseClient, profileId: string) {
-  const { data, error } = await supabase
-    .from("conversation_participants")
-    .select("conversation_id,last_read_at,conversations!inner(id,last_message_at)")
-    .eq("profile_id", profileId);
-  if (error) return apiError("DB", error.message, 500);
-
-  const rows = ((data as unknown as { conversation_id: string; last_read_at: string | null; conversations: { id: string; last_message_at: string | null } }[]) ?? [])
-    .map((r) => ({
-      conversation_id: r.conversation_id,
-      last_read_at: r.last_read_at,
-      last_message_at: r.conversations?.last_message_at ?? null
-    }))
-    .sort((a, b) => (b.last_message_at ?? "").localeCompare(a.last_message_at ?? ""));
-
-  const enriched = await Promise.all(rows.map(async (c) => {
-    const [others, lastMsg, unread] = await Promise.all([
-      supabase
-        .from("conversation_participants")
-        .select("profile_id, profiles!inner(id,name,avatar_url,last_seen_at)")
-        .eq("conversation_id", c.conversation_id)
-        .neq("profile_id", profileId)
-        .limit(1),
-      supabase
-        .from("messages")
-        .select("body,created_at,sender_id,deleted_at")
-        .eq("conversation_id", c.conversation_id)
-        .order("created_at", { ascending: false })
-        .limit(1),
-      supabase
-        .from("messages")
-        .select("id", { count: "exact", head: true })
-        .eq("conversation_id", c.conversation_id)
-        .neq("sender_id", profileId)
-        .is("read_at", null)
-    ]);
-    const person = (others as unknown as { profiles: { id: string; name: string; avatar_url: string | null; last_seen_at: string | null } }[] | null)?.[0]?.profiles ?? null;
-    const last = (lastMsg as unknown as { body: string; created_at: string; sender_id: string; deleted_at: string | null }[] | null)?.[0] ?? null;
-    return {
-      conversation_id: c.conversation_id,
-      with: person,
-      last_message: last ? { body: last.deleted_at ? "Message deleted" : last.body, created_at: last.created_at, mine: last.sender_id === profileId } : null,
-      unread: unread.count ?? 0,
-      last_read_at: c.last_read_at
-    };
-  }));
-  return Response.json({ conversations: enriched });
 }
 
 export async function POST(request: Request) {
