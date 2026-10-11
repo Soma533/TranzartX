@@ -6,87 +6,93 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
+const INSTALLED_KEY = "tranzartx-installed";
+
+/**
+ * `beforeinstallprompt` fires once, early, and can be missed if we only listen
+ * inside a React effect. Capture it at module scope and fan it out to any
+ * component that mounts later.
+ */
+let deferred: BeforeInstallPromptEvent | null = null;
+const subscribers = new Set<() => void>();
+let attached = false;
+
+function notify() {
+  subscribers.forEach((fn) => fn());
+}
+
+function attachListener() {
+  if (attached || typeof window === "undefined") return;
+  attached = true;
+  window.addEventListener("beforeinstallprompt", (e) => {
+    // Suppress Chrome's mini-infobar so our button is the single entry point.
+    e.preventDefault();
+    deferred = e as BeforeInstallPromptEvent;
+    notify();
+  });
+  window.addEventListener("appinstalled", () => {
+    deferred = null;
+    try { localStorage.setItem(INSTALLED_KEY, "1"); } catch { /* private mode */ }
+    notify();
+  });
+}
+if (typeof window !== "undefined") attachListener();
+
 function isStandalone() {
-  if (typeof window === "undefined") return false;
   return window.matchMedia("(display-mode: standalone)").matches
     || (navigator as unknown as { standalone?: boolean }).standalone === true;
 }
 
+function alreadyInstalled() {
+  try { return localStorage.getItem(INSTALLED_KEY) === "1"; } catch { return false; }
+}
+
 function isIOS() {
-  if (typeof navigator === "undefined") return false;
   return /iphone|ipad|ipod/i.test(navigator.userAgent);
 }
 
 /**
- * Visible install affordance. Chrome/Android/Edge fire `beforeinstallprompt`,
- * which we capture so we can offer a real one-tap install. iOS Safari has no
- * such event, so those users get the Share -> Add to Home Screen instructions.
+ * Install affordance.
+ *
+ * The button only appears when tapping it can actually install the app:
+ *  - the browser raised `beforeinstallprompt` → tapping opens the native
+ *    install dialog immediately, with no intermediate screen
+ *  - iOS, where no browser exposes that event and Add to Home Screen is the
+ *    only route → tapping shows the short instruction card
+ * Everywhere else the button stays hidden rather than offering dead-end text,
+ * because a site cannot install itself without the browser's permission.
  */
 export function InstallButton({ compact = false }: { compact?: boolean }) {
-  const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
+  const [, force] = useState(0);
   const [installed, setInstalled] = useState(false);
   const [showIOSHelp, setShowIOSHelp] = useState(false);
 
   useEffect(() => {
-    setInstalled(isStandalone());
-
-    const onPrompt = (e: Event) => {
-      // Suppress Chrome's mini-infobar so we control the messaging.
-      e.preventDefault();
-      setDeferred(e as BeforeInstallPromptEvent);
-    };
-    const onInstalled = () => {
-      setInstalled(true);
-      setDeferred(null);
-    };
-    window.addEventListener("beforeinstallprompt", onPrompt);
-    window.addEventListener("appinstalled", onInstalled);
-
-    // Safari can install silently if already added — re-check shortly after load.
-    const t = setTimeout(() => setInstalled(isStandalone()), 1200);
-    return () => {
-      window.removeEventListener("beforeinstallprompt", onPrompt);
-      window.removeEventListener("appinstalled", onInstalled);
-      clearTimeout(t);
-    };
+    setInstalled(isStandalone() || alreadyInstalled());
+    const rerender = () => force((n) => n + 1);
+    subscribers.add(rerender);
+    return () => { subscribers.delete(rerender); };
   }, []);
 
   if (installed) return null;
+
+  const canPrompt = Boolean(deferred);
+  const iosOnly = !canPrompt && isIOS();
+
+  if (!canPrompt && !iosOnly) return null;
 
   async function install() {
     if (deferred) {
       await deferred.prompt();
       const choice = await deferred.userChoice;
-      if (choice.outcome === "accepted") setInstalled(true);
-      setDeferred(null);
+      if (choice.outcome === "accepted") {
+        setInstalled(true);
+        try { localStorage.setItem(INSTALLED_KEY, "1"); } catch { /* ignore */ }
+      }
+      deferred = null;
+      force((n) => n + 1);
       return;
     }
-    // The browser may not have raised beforeinstallprompt yet. Give it a brief
-    // window so a tap still installs immediately instead of showing instructions.
-    if (typeof window !== "undefined" && "onbeforeinstallprompt" in window) {
-      const arrived = await new Promise<BeforeInstallPromptEvent | null>((resolve) => {
-        const timer = window.setTimeout(() => {
-          window.removeEventListener("beforeinstallprompt", onEvent);
-          resolve(null);
-        }, 1500);
-        function onEvent(e: Event) {
-          window.clearTimeout(timer);
-          window.removeEventListener("beforeinstallprompt", onEvent);
-          e.preventDefault();
-          resolve(e as BeforeInstallPromptEvent);
-        }
-        window.addEventListener("beforeinstallprompt", onEvent);
-      });
-      if (arrived) {
-        setDeferred(arrived);
-        await arrived.prompt();
-        const choice = await arrived.userChoice;
-        if (choice.outcome === "accepted") setInstalled(true);
-        setDeferred(null);
-        return;
-      }
-    }
-    // Genuinely unsupported (iOS Safari, in-app browsers) — show the steps.
     setShowIOSHelp(true);
   }
 
@@ -97,12 +103,11 @@ export function InstallButton({ compact = false }: { compact?: boolean }) {
         onClick={() => void install()}
         title="Install TranzartX on this device"
         aria-label="Install TranzartX on this device"
-        className={`inline-flex items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 ${compact ? "h-10 w-10 shrink-0 px-0 sm:w-auto sm:px-3" : "px-4 py-2 text-sm"} font-medium`}
+        className={`inline-flex items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/5 font-medium text-primary transition-colors hover:bg-primary/10 ${compact ? "h-10 w-10 shrink-0 px-0 sm:w-auto sm:px-3" : "px-4 py-2 text-sm"}`}
       >
         <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 3.5v11M8 11l4 4 4-4M4.5 17.5v1.2a1.8 1.8 0 0 0 1.8 1.8h11.4a1.8 1.8 0 0 0 1.8-1.8v-1.2" />
         </svg>
-        {/* Icon-only on phones so it fits beside the Menu button. */}
         <span className={compact ? "hidden sm:inline" : ""}>Install app</span>
       </button>
 
@@ -114,21 +119,13 @@ export function InstallButton({ compact = false }: { compact?: boolean }) {
           aria-label="How to install TranzartX"
           onClick={() => setShowIOSHelp(false)}
         >
-          <div
-            className="w-full max-w-sm rounded-2xl bg-background p-5"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="w-full max-w-sm rounded-2xl bg-background p-5" onClick={(e) => e.stopPropagation()}>
             <p className="text-lg font-semibold">Install TranzartX</p>
             <ol className="mt-3 grid gap-2 text-sm text-muted-foreground">
               <li>1. Tap the <strong>Share</strong> button (square with an arrow) in your browser.</li>
               <li>2. Scroll and tap <strong>Add to Home Screen</strong>.</li>
               <li>3. Tap <strong>Add</strong> — TranzartX opens like an app.</li>
             </ol>
-            {!isIOS() && (
-              <p className="mt-3 text-sm text-muted-foreground">
-                On desktop Chrome/Edge, click the install icon in the address bar.
-              </p>
-            )}
             <button
               type="button"
               onClick={() => setShowIOSHelp(false)}
