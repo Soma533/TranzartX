@@ -23,10 +23,17 @@ export async function PATCH(request: Request) {
   if (!parsed.success) return apiError("VALIDATION", parsed.error.message, 422);
   const { data: existing } = await supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle();
   const { pct } = scoreCompleteness({ ...(existing as Record<string, unknown>), ...parsed.data } as never);
+  // Completing onboarding (or any later profile save) closes the flag, so the
+  // setup screen is never demanded again — PRD §7.
+  const payload = {
+    ...parsed.data,
+    profile_completeness: pct,
+    onboarding_completed_at: new Date().toISOString()
+  };
   if (!existing) {
     const { data, error } = await supabase
       .from("profiles")
-      .insert({ user_id: user.id, ...parsed.data, profile_completeness: pct })
+      .insert({ user_id: user.id, name: "Member", ...payload })
       .select()
       .single();
     if (error) return apiError("DB", error.message, 500);
@@ -34,7 +41,7 @@ export async function PATCH(request: Request) {
   }
   const { data, error } = await supabase
     .from("profiles")
-    .update({ ...parsed.data, profile_completeness: pct })
+    .update(payload)
     .eq("user_id", user.id)
     .select()
     .single();

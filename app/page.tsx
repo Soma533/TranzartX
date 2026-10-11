@@ -9,22 +9,22 @@ import { landingFor } from "@/lib/landing";
  */
 export default async function Home() {
   let userId: string | null = null;
-  let completeness: number | null = null;
+  let profile: { onboarding_completed_at?: string | null; profile_completeness?: number | null } | null = null;
   try {
     const { supabase, user } = await getSessionUser();
     userId = user?.id ?? null;
     if (userId) {
       const { data } = await supabase
         .from("profiles")
-        .select("profile_completeness")
+        .select("onboarding_completed_at,profile_completeness")
         .eq("user_id", userId)
         .maybeSingle();
-      completeness = (data as { profile_completeness: number } | null)?.profile_completeness ?? null;
+      profile = data ?? null;
     }
   } catch {
     userId = null;
   }
 
   if (!userId) redirect("/signup");
-  redirect(landingFor(completeness));
+  redirect(landingFor(profile));
 }

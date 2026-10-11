@@ -28,10 +28,10 @@ export async function GET(request: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     const { data: profile } = await supabase
       .from("profiles")
-      .select("profile_completeness")
+      .select("onboarding_completed_at,profile_completeness")
       .eq("user_id", user?.id ?? "")
       .maybeSingle();
-    const target = requested ?? landingFor((profile as { profile_completeness: number } | null)?.profile_completeness);
+    const target = requested ?? landingFor(profile);
     return NextResponse.redirect(new URL(target, url.origin));
   }
   return NextResponse.redirect(new URL(requested ?? "/login", url.origin));

@@ -695,3 +695,15 @@ create policy "public read follows" on follows for select using (true);
 
 create index if not exists follows_following_idx on follows (following_id);
 create index if not exists follows_follower_idx on follows (follower_id);
+
+-- ================= supabase/migrations/0019_onboarding_flag.sql =================
+-- 0019: explicit onboarding completion flag.
+-- The landing rule previously inferred "never onboarded" from a low
+-- completeness score, which re-prompted users who saved only their name.
+alter table profiles add column if not exists onboarding_completed_at timestamptz;
+
+-- Members who already have profile content are treated as onboarded.
+update profiles
+set onboarding_completed_at = now()
+where onboarding_completed_at is null
+  and (bio is not null or statement is not null or array_length(disciplines, 1) > 0);

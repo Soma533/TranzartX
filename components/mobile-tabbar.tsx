@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CORE_ITEMS } from "@/components/nav-items";
+import { useAuthSession } from "@/components/auth-provider";
 
 /**
  * Instagram-style bottom tab bar, phones only (laptops get DesktopSidebar).
@@ -12,6 +13,9 @@ const tabs = CORE_ITEMS;
 
 export function MobileTabBar() {
   const pathname = usePathname();
+  const { signedIn } = useAuthSession();
+  // Signed-out visitors see the marketing/auth pages, never the app shell.
+  if (!signedIn) return null;
   return (
     <nav
       aria-label="Primary"

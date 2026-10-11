@@ -10,23 +10,27 @@ const MAX_DRAG = 88;
 const HOLD_MS = 450; // press-and-hold duration that opens the action sheet
 
 interface Handlers {
+  onTouchStart: (e: React.TouchEvent) => void;
+  onTouchMove: (e: React.TouchEvent) => void;
+  onTouchEnd: () => void;
   onPointerDown: (e: React.PointerEvent) => void;
-  onPointerMove: (e: React.PointerEvent) => void;
   onPointerUp: () => void;
-  onPointerCancel: () => void;
   onContextMenu: (e: React.MouseEvent) => void;
   style: { touchAction: "pan-y"; userSelect: "none" };
 }
 
 /**
- * Combines the two gestures on a bubble:
- *  - swipe RIGHT to reply (touch and mouse drag)
+ * Combines two independent gestures on a bubble:
+ *  - swipe RIGHT to reply (touch drag and mouse drag)
  *  - press and HOLD (or right-click) to open the action sheet
- * A hold that turns into a swipe is ignored, so the two never fight.
+ * Both stay available; a hold that turns into a swipe cancels the hold so the
+ * two never fight. Touch handlers call preventDefault on horizontal movement
+ * so the browser cannot steal the gesture for scrolling.
  */
 export function useBubbleGestures(onReply: () => void, onHold: () => void) {
   const [drag, setDrag] = useState(0);
   const startX = useRef<number | null>(null);
+  const startY = useRef<number | null>(null);
   const timer = useRef<number | null>(null);
   const held = useRef(false);
   const replied = useRef(false);
@@ -38,47 +42,66 @@ export function useBubbleGestures(onReply: () => void, onHold: () => void) {
     }
   };
 
+  const track = (dx: number) => {
+    if (dx <= 0) {
+      if (drag !== 0) setDrag(0);
+      return;
+    }
+    if (held.current) return;
+    if (dx > 8) clearTimer(); // moving means swiping, not holding
+    const next = Math.min(dx, MAX_DRAG);
+    setDrag(next);
+    if (next >= THRESHOLD && !replied.current) {
+      replied.current = true;
+      clearTimer();
+      onReply();
+    }
+  };
+
+  const reset = () => {
+    clearTimer();
+    startX.current = null;
+    startY.current = null;
+    if (drag !== 0) window.setTimeout(() => setDrag(0), 120);
+  };
+
   const handlers: Handlers = {
-    onPointerDown(e) {
-      if (e.button !== 0) return;
-      startX.current = e.clientX;
+    onTouchStart(e) {
+      const t = e.touches[0];
+      if (!t) return;
+      startX.current = t.clientX;
+      startY.current = t.clientY;
       held.current = false;
       replied.current = false;
-      // Desktop left-click should not instantly open the sheet; touch does.
-      if (e.pointerType !== "mouse") {
-        timer.current = window.setTimeout(() => {
-          held.current = true;
-          onHold();
-        }, HOLD_MS);
+      timer.current = window.setTimeout(() => {
+        held.current = true;
+        onHold();
+      }, HOLD_MS);
+    },
+    onTouchMove(e) {
+      if (startX.current === null) return;
+      const t = e.touches[0];
+      if (!t) return;
+      const dx = t.clientX - startX.current;
+      const dy = t.clientY - (startY.current ?? t.clientY);
+      // Claim the gesture once it is clearly horizontal, blocking scroll.
+      if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
+        if (e.cancelable) e.preventDefault();
+        track(dx);
       }
     },
-    onPointerMove(e) {
-      if (startX.current === null) return;
-      const dx = e.clientX - startX.current;
-      if (dx <= 0) {
-        if (drag !== 0) setDrag(0);
-        return;
-      }
-      // Movement means the user is swiping, not holding.
-      if (held.current) return;
-      if (Math.abs(dx) > 8) clearTimer();
-      const next = Math.min(dx, MAX_DRAG);
-      setDrag(next);
-      if (next >= THRESHOLD && !replied.current) {
-        replied.current = true;
-        clearTimer();
-        onReply();
-      }
+    onTouchEnd: reset,
+    onPointerDown(e) {
+      if (e.pointerType !== "mouse") return; // touch is handled above
+      startX.current = e.clientX;
+      startY.current = e.clientY;
+      held.current = false;
+      replied.current = false;
     },
     onPointerUp() {
-      clearTimer();
-      startX.current = null;
-      if (drag !== 0) window.setTimeout(() => setDrag(0), 120);
-    },
-    onPointerCancel() {
-      clearTimer();
-      startX.current = null;
-      if (drag !== 0) setDrag(0);
+      if (startX.current === null) return;
+      if (drag > 0) track(drag);
+      reset();
     },
     onContextMenu(e) {
       // Right-click is the desktop equivalent of press-and-hold.

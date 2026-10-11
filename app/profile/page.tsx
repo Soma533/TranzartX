@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { ProfileSettings } from "@/app/settings/sections";
 import type { SettingsForm } from "@/app/settings/fields";
 import { useToast } from "@/hooks/use-toast";
@@ -22,6 +23,7 @@ export default function ProfileSettingsPage() {
   const { push } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<SettingsForm>(EMPTY);
 
   useEffect(() => {
@@ -62,15 +64,62 @@ export default function ProfileSettingsPage() {
 
   return (
     <div className="mx-auto grid max-w-2xl gap-4">
-      <div>
-        <h1 className="text-2xl font-bold">Profile</h1>
-        <p className="text-sm text-muted-foreground">How you appear to collectors, galleries and collaborators.</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">{editing ? "Edit profile" : form.name || "Profile"}</h1>
+          <p className="text-sm text-muted-foreground">
+            {editing ? "Update how you appear to collectors, galleries and collaborators." : "Your public profile."}
+          </p>
+        </div>
+        <Button variant={editing ? "outline" : "default"} onClick={() => setEditing((e) => !e)}>
+          {editing ? "Cancel" : "Edit profile"}
+        </Button>
       </div>
-      <ProfileSettings form={form} set={set} />
-      <div>
-        <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save profile"}</Button>
-        <Button variant="outline" className="ml-2" onClick={() => router.back()}>Back</Button>
-      </div>
+
+      {!editing ? (
+        <>
+          <Card>
+            <div className="flex items-center gap-4">
+              {form.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={form.avatar_url} alt="" className="h-16 w-16 rounded-full object-cover" />
+              ) : (
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary text-lg font-bold">
+                  {form.name.slice(0, 1) || "?"}
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="font-semibold">{form.name || "Unnamed"}</p>
+                <p className="text-sm text-muted-foreground">
+                  {[form.location_city, form.location_country].filter(Boolean).join(", ") || "Location not set"}
+                </p>
+                {form.career_stage && <p className="text-xs text-muted-foreground">{form.career_stage}</p>}
+              </div>
+            </div>
+            {form.short_desc && <p className="mt-3 text-sm">{form.short_desc}</p>}
+          </Card>
+          {form.bio && (
+            <Card>
+              <p className="text-sm font-semibold">Biography</p>
+              <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{form.bio}</p>
+            </Card>
+          )}
+          {form.statement && (
+            <Card>
+              <p className="text-sm font-semibold">Artist statement</p>
+              <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{form.statement}</p>
+            </Card>
+          )}
+        </>
+      ) : (
+        <>
+          <ProfileSettings form={form} set={set} />
+          <div>
+            <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save profile"}</Button>
+            <Button variant="outline" className="ml-2" onClick={() => router.back()}>Back</Button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

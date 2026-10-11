@@ -18,6 +18,7 @@ export default function OnboardingPage() {
   async function save() {
     const r = await fetch("/api/profiles/me", {
       method: "PATCH", headers: { "Content-Type": "application/json" },
+      // Stamped server-side on onboarding so the user is never asked again.
       body: JSON.stringify({ name, role, location_country: country, disciplines: discipline ? [discipline] : [], bio: draft || undefined })
     });
     if (r.ok) {

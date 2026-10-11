@@ -144,7 +144,9 @@ function MessagesInner() {
   const sendDisabled = !draft.trim() || sending || starting;
 
   return (
-    <div className="grid overflow-hidden rounded-2xl border md:h-[calc(100vh-11rem)] md:grid-cols-[320px_1fr]">
+    // Fixed height on every screen so only the thread scrolls and the header
+    // stays pinned (Instagram behaviour) — phones included.
+    <div className="grid h-[calc(100dvh-9.5rem)] overflow-hidden rounded-2xl border md:h-[calc(100vh-11rem)] md:grid-cols-[320px_1fr]">
       {/* Thread list — full width on phones, left rail on larger screens. */}
       <section className={`overflow-y-auto border-r ${active ? "hidden md:block" : "block"}`} aria-label="Conversations">
         <h1 className="border-b px-4 py-3 text-lg font-bold">Messages</h1>
@@ -152,11 +154,11 @@ function MessagesInner() {
       </section>
 
       {/* Conversation */}
-      <section className={`flex min-h-[60vh] flex-col ${active ? "flex" : "hidden md:flex"}`} aria-label="Conversation">
+      <section className={`flex min-h-0 flex-col ${active ? "flex" : "hidden md:flex"}`} aria-label="Conversation">
         {active ? (
           <>
             <ChatHeader peer={peer} isOnline={Boolean(online[peer?.id ?? ""])} onBack={() => setActive(null)} />
-            <div className="flex-1 overflow-y-auto px-3 py-3">
+            <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-3">
               <ChatThread
                 messages={messages}
                 myId={myId}

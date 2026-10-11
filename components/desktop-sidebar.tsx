@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_ITEMS } from "@/components/nav-items";
+import { useAuthSession } from "@/components/auth-provider";
 
 /**
  * Instagram-style left icon rail for laptops and desktops. Phones use
@@ -9,6 +10,8 @@ import { NAV_ITEMS } from "@/components/nav-items";
  */
 export function DesktopSidebar() {
   const pathname = usePathname();
+  const { signedIn } = useAuthSession();
+  if (!signedIn) return null;
   return (
     <nav
       aria-label="Primary"
