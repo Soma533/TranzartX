@@ -17,6 +17,7 @@ export const NAV_ITEMS: { href: string; label: string; Icon: IconType }[] = [
   { href: "/messages", label: "Messages", Icon: MessageIcon },
   { href: "/inquiries", label: "Inquiries", Icon: MailIcon },
   { href: "/assistant", label: "Assistant", Icon: SparkIcon },
+  { href: "/profile", label: "Profile", Icon: FrameIcon },
   { href: "/settings", label: "Settings", Icon: GearIcon }
 ];
 

@@ -6,6 +6,7 @@ import { Navbar } from "@/components/navbar";
 import { MobileTabBar } from "@/components/mobile-tabbar";
 import { DesktopSidebar } from "@/components/desktop-sidebar";
 import { PwaRegister } from "@/components/pwa-register";
+import { themeInitScript } from "@/components/theme-provider";
 import { Footer } from "@/components/footer";
 import { Toaster } from "@/components/toaster";
 
@@ -49,6 +50,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Next emits mobile-web-app-capable but not the Apple-specific tag
             older iOS Safari needs to allow Add to Home Screen. */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
+        {/* Applies the saved theme before first paint (no white flash). */}
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="font-sans">
         <Providers>

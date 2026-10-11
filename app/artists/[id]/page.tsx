@@ -2,6 +2,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { scoreCompleteness } from "@/services/domain.service";
+import { FollowStats } from "@/components/follow-stats";
 
 /** Public artist profile — professional home (PRD §9). Reads via public RLS, no login required. */
 export default async function ArtistPage({ params }: { params: Promise<{ id: string }> }) {
@@ -49,6 +50,7 @@ export default async function ArtistPage({ params }: { params: Promise<{ id: str
           </div>
         </div>
         <p className="mt-3 text-sm">Profile health: {pct}% complete</p>
+        <FollowStats profileId={id} />
         {tips.length > 0 && <p className="mt-1 text-xs text-muted-foreground">Missing: {tips.slice(0, 3).join(" · ")}</p>}
         {p.commission_open && <p className="mt-2 text-sm font-medium text-primary">Open to commissions & collaborations</p>}
         <div className="mt-3 flex flex-wrap gap-2">

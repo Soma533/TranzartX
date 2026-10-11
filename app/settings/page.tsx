@@ -1,20 +1,28 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { uploadImage } from "@/lib/upload";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { ProfileSettings, PortfolioSettings, InquirySettings } from "@/app/settings/sections";
-import type { SettingsForm } from "@/app/settings/fields";
+import { Input } from "@/components/ui/input";
+import { Card, CardTitle } from "@/components/ui/card";
+import { PortfolioSettings, InquirySettings, AppearanceSection } from "@/app/settings/sections";
+import { Toggle, type SettingsForm } from "@/app/settings/fields";
 
 const TABS = [
-  { id: "profile", label: "Profile" },
   { id: "portfolio", label: "Portfolio" },
-  { id: "inquiries", label: "Inquiries" }
+  { id: "inquiries", label: "Inquiries" },
+  { id: "account", label: "Account" }
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
+
+const NOTIFY_PREFS = [
+  ["notify_matches", "New opportunities matching my goals"],
+  ["notify_saves", "Someone saves my artwork"],
+  ["notify_deadlines", "Application deadline reminders"]
+] as const;
 
 const EMPTY: SettingsForm = {
   name: "", location_country: "", location_city: "", bio: "", statement: "", short_desc: "",
@@ -26,16 +34,14 @@ const EMPTY: SettingsForm = {
   inquiries_open: true, inquiry_auto_reply: "", inquiry_response_time: "1-2 days"
 };
 
-/** Profile, portfolio and inquiry settings, grouped into tabs (PRD §7). */
+/** Everything except profile details, which have their own /profile page. */
 export default function SettingsPage() {
   const router = useRouter();
   const { push } = useToast();
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [tab, setTab] = useState<TabId>("profile");
+  const [tab, setTab] = useState<TabId>("portfolio");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<SettingsForm>(EMPTY);
-
   const [vKind, setVKind] = useState("IDENTITY");
   const [vEvidence, setVEvidence] = useState("");
   const [vRequests, setVRequests] = useState<{ id: string; kind: string; status: string }[]>([]);
@@ -45,13 +51,9 @@ export default function SettingsPage() {
       if (j.profile) {
         const p = j.profile as Record<string, unknown>;
         setForm((f) => ({
-          ...f,
-          ...p,
+          ...f, ...p,
           collaboration_types: (p.collaboration_types as string[]) ?? [],
-          inquiry_auto_reply: (p.inquiry_auto_reply as string) ?? "",
-          default_currency: (p.default_currency as string) ?? "NGN",
-          default_availability: (p.default_availability as string) ?? "AVAILABLE",
-          inquiry_response_time: (p.inquiry_response_time as string) ?? "1-2 days"
+          inquiry_auto_reply: (p.inquiry_auto_reply as string) ?? ""
         }));
       }
     }).catch(() => null).finally(() => setLoading(false));
@@ -74,18 +76,6 @@ export default function SettingsPage() {
     }));
   }
 
-  async function avatar(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    try {
-      const url = await uploadImage(f, "avatars");
-      set("avatar_url", url);
-      push("Photo uploaded — save to apply");
-    } catch (err) {
-      push(err instanceof Error ? err.message : "Photo upload failed");
-    }
-  }
-
   async function requestVerification() {
     const r = await fetch("/api/verification", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -102,21 +92,18 @@ export default function SettingsPage() {
   }
 
   async function save() {
-    if (form.name.trim().length < 2) { push("Name needs at least 2 characters"); return; }
     setSaving(true);
     try {
       const payload = Object.fromEntries(
-        Object.entries({ ...form, name: form.name.trim() }).map(([k, v]) => [k, v === "" ? undefined : v])
+        Object.entries(form).map(([k, v]) => [k, v === "" ? undefined : v])
       );
       const r = await fetch("/api/profiles/me", {
         method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-      if (r.ok) {
-        push("Settings saved");
-      } else if (r.status === 401) {
-        push("Session expired — log in again, then retry");
-      } else {
+      if (r.ok) push("Settings saved");
+      else if (r.status === 401) push("Session expired — log in again, then retry");
+      else {
         const j = await r.json().catch(() => null);
         push(j?.error?.message ?? "Save failed — try again");
       }
@@ -136,6 +123,11 @@ export default function SettingsPage() {
     <div className="mx-auto grid max-w-2xl gap-4">
       <h1 className="text-2xl font-bold">Settings</h1>
 
+      <Link href="/profile" className="flex items-center justify-between rounded-xl border px-4 py-3 text-sm hover:bg-secondary">
+        <span><span className="font-medium">Profile</span><span className="block text-xs text-muted-foreground">Photo, name, bio and artist statement</span></span>
+        <span aria-hidden>→</span>
+      </Link>
+
       <div role="tablist" aria-label="Settings sections" className="flex gap-1 rounded-xl border p-1">
         {TABS.map((t) => (
           <button
@@ -143,22 +135,43 @@ export default function SettingsPage() {
             role="tab"
             aria-selected={tab === t.id}
             onClick={() => setTab(t.id)}
-            className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium ${tab === t.id ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`}
+            className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium ${tab === t.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}
           >
             {t.label}
           </button>
         ))}
       </div>
 
-      {tab === "profile" && (
-        <ProfileSettings
-          form={form} set={set} fileRef={fileRef} onAvatar={avatar}
-          vKind={vKind} setVKind={setVKind} vEvidence={vEvidence} setVEvidence={setVEvidence}
-          onRequestVerification={requestVerification} vRequests={vRequests}
-        />
-      )}
       {tab === "portfolio" && <PortfolioSettings form={form} set={set} toggleCollab={toggleCollab} />}
       {tab === "inquiries" && <InquirySettings form={form} set={set} />}
+      {tab === "account" && (
+        <>
+          <AppearanceSection />
+          <Card>
+            <CardTitle>Notifications</CardTitle>
+            {NOTIFY_PREFS.map(([k, label]) => (
+              <Toggle key={k} label={label} checked={form[k]} onChange={(v) => set(k, v)} />
+            ))}
+          </Card>
+          <Card>
+            <CardTitle>Verification</CardTitle>
+            <p className="mt-1 text-sm text-muted-foreground">Verified profiles earn buyer and gallery trust. Tell us what to verify.</p>
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+              <select value={vKind} onChange={(e) => setVKind(e.target.value)} className="rounded-xl border bg-background px-2 py-2 text-sm">
+                <option value="IDENTITY">Artist identity</option>
+                <option value="EXHIBITION">Exhibition history</option>
+                <option value="GALLERY">Gallery affiliation</option>
+                <option value="ORGANIZATION">Organization</option>
+              </select>
+              <Input placeholder="Evidence (link or reference)" value={vEvidence} onChange={(e) => setVEvidence(e.target.value)} />
+              <Button variant="secondary" onClick={requestVerification} className="sm:shrink-0">Request</Button>
+            </div>
+            {vRequests.map((v) => (
+              <p key={v.id} className="mt-1 text-xs text-muted-foreground">{v.kind} — {v.status}</p>
+            ))}
+          </Card>
+        </>
+      )}
 
       <div className="flex flex-wrap gap-2">
         <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save settings"}</Button>

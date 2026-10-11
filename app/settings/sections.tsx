@@ -1,8 +1,12 @@
 "use client";
+import { useRef, useState } from "react";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { Field, Toggle, COLLAB_OPTIONS, type SettingsForm } from "@/app/settings/fields";
+import { uploadImage } from "@/lib/upload";
+import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "@/components/theme-provider";
 
 interface Props {
   form: SettingsForm;
@@ -10,11 +14,10 @@ interface Props {
   toggleCollab: (opt: string) => void;
 }
 
-const NOTIFY_PREFS = [
-  ["notify_matches", "New opportunities matching my goals"],
-  ["notify_saves", "Someone saves my artwork"],
-  ["notify_deadlines", "Application deadline reminders"]
-] as const satisfies readonly (readonly [keyof SettingsForm, string])[];
+interface ProfileProps {
+  form: SettingsForm;
+  set: <K extends keyof SettingsForm>(k: K, v: SettingsForm[K]) => void;
+}
 
 /** Portfolio settings: how your body of work is presented and priced. */
 export function PortfolioSettings({ form, set, toggleCollab }: Props) {
@@ -33,7 +36,7 @@ export function PortfolioSettings({ form, set, toggleCollab }: Props) {
         <p className="mt-1 text-sm text-muted-foreground">Applied to each new artwork you upload.</p>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           <Field label="Default currency">
-            <select value={form.default_currency} onChange={(e) => set("default_currency", e.target.value)} className="rounded-xl border px-3 py-2 text-sm">
+            <select value={form.default_currency} onChange={(e) => set("default_currency", e.target.value)} className="rounded-xl border bg-background px-3 py-2 text-sm">
               <option value="NGN">NGN — Nigerian Naira</option>
               <option value="GHS">GHS — Ghanaian Cedi</option>
               <option value="ZAR">ZAR — South African Rand</option>
@@ -44,7 +47,7 @@ export function PortfolioSettings({ form, set, toggleCollab }: Props) {
             </select>
           </Field>
           <Field label="Default availability">
-            <select value={form.default_availability} onChange={(e) => set("default_availability", e.target.value)} className="rounded-xl border px-3 py-2 text-sm">
+            <select value={form.default_availability} onChange={(e) => set("default_availability", e.target.value)} className="rounded-xl border bg-background px-3 py-2 text-sm">
               <option value="AVAILABLE">Available</option>
               <option value="RESERVED">Reserved</option>
               <option value="SOLD">Sold</option>
@@ -63,7 +66,7 @@ export function PortfolioSettings({ form, set, toggleCollab }: Props) {
             <button
               key={o}
               onClick={() => toggleCollab(o)}
-              className={`rounded-full border px-3 py-1 text-xs ${form.collaboration_types.includes(o) ? "bg-primary text-white" : "bg-white text-muted-foreground"}`}
+              className={`rounded-full border px-3 py-1 text-xs ${form.collaboration_types.includes(o) ? "border-primary bg-primary text-primary-foreground" : "text-muted-foreground"}`}
             >
               {o}
             </button>
@@ -75,7 +78,7 @@ export function PortfolioSettings({ form, set, toggleCollab }: Props) {
 }
 
 /** Inquiry settings: whether you take purchase enquiries and how fast you reply. */
-export function InquirySettings({ form, set }: { form: SettingsForm; set: <K extends keyof SettingsForm>(k: K, v: SettingsForm[K]) => void }) {
+export function InquirySettings({ form, set }: { form: SettingsForm; set: Props["set"] }) {
   return (
     <>
       <Card>
@@ -89,7 +92,7 @@ export function InquirySettings({ form, set }: { form: SettingsForm; set: <K ext
         <CardTitle>Response expectations</CardTitle>
         <div className="mt-2 grid gap-2">
           <Field label="Typical reply time">
-            <select value={form.inquiry_response_time} onChange={(e) => set("inquiry_response_time", e.target.value)} className="rounded-xl border px-3 py-2 text-sm">
+            <select value={form.inquiry_response_time} onChange={(e) => set("inquiry_response_time", e.target.value)} className="rounded-xl border bg-background px-3 py-2 text-sm">
               <option value="Within hours">Within hours</option>
               <option value="1-2 days">1-2 days</option>
               <option value="3-5 days">3-5 days</option>
@@ -105,19 +108,45 @@ export function InquirySettings({ form, set }: { form: SettingsForm; set: <K ext
   );
 }
 
-/** Profile settings: identity, photo, notification prefs, verification. */
-export function ProfileSettings({ form, set, fileRef, onAvatar, vKind, setVKind, vEvidence, setVEvidence, onRequestVerification, vRequests }: {
-  form: SettingsForm;
-  set: <K extends keyof SettingsForm>(k: K, v: SettingsForm[K]) => void;
-  fileRef: React.RefObject<HTMLInputElement | null>;
-  onAvatar: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  vKind: string;
-  setVKind: (v: string) => void;
-  vEvidence: string;
-  setVEvidence: (v: string) => void;
-  onRequestVerification: () => void;
-  vRequests: { id: string; kind: string; status: string }[];
-}) {
+/** Appearance: light or dark theme. */
+export function AppearanceSection() {
+  const { theme, toggle } = useTheme();
+  return (
+    <Card>
+      <CardTitle>Appearance</CardTitle>
+      <p className="mt-1 text-sm text-muted-foreground">Choose how TranzartX looks on this device.</p>
+      <div className="mt-3 flex gap-2">
+        {(["light", "dark"] as const).map((option) => (
+          <button
+            key={option}
+            onClick={() => { if (theme !== option) toggle(); }}
+            aria-pressed={theme === option}
+            className={`flex-1 rounded-xl border px-4 py-3 text-sm capitalize ${theme === option ? "border-primary bg-secondary font-semibold" : "text-muted-foreground"}`}
+          >
+            {theme === option ? "✓ " : ""}{option}
+          </button>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+/** Profile settings, kept on their own page so they stay separate. */
+export function ProfileSettings({ form, set }: ProfileProps) {
+  const { push } = useToast();
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function avatar(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    try {
+      set("avatar_url", await uploadImage(f, "avatars"));
+      push("Photo uploaded — save to apply");
+    } catch (err) {
+      push(err instanceof Error ? err.message : "Photo upload failed");
+    }
+  }
+
   return (
     <>
       <Card>
@@ -125,12 +154,12 @@ export function ProfileSettings({ form, set, fileRef, onAvatar, vKind, setVKind,
         <div className="mt-2 flex items-center gap-3">
           {form.avatar_url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={form.avatar_url} alt="Avatar" className="h-14 w-14 rounded-full object-cover" />
+            <img src={form.avatar_url} alt="Avatar" className="h-16 w-16 rounded-full object-cover" />
           ) : (
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary font-bold">?</div>
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary text-lg font-bold">?</div>
           )}
           <label className="cursor-pointer rounded-xl border px-3 py-2 text-sm hover:bg-secondary">Upload photo</label>
-          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={onAvatar} />
+          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={avatar} />
         </div>
       </Card>
       <Card>
@@ -144,10 +173,10 @@ export function ProfileSettings({ form, set, fileRef, onAvatar, vKind, setVKind,
             <Field label="City"><Input placeholder="City" value={form.location_city ?? ""} onChange={(e) => set("location_city", e.target.value)} /></Field>
           </div>
           <Field label="Tagline (max 140 chars)">
-            <Input placeholder="Tagline (max 140 chars)" value={form.short_desc ?? ""} onChange={(e) => set("short_desc", e.target.value)} maxLength={140} />
+            <Input placeholder="Tagline" value={form.short_desc ?? ""} onChange={(e) => set("short_desc", e.target.value)} maxLength={140} />
           </Field>
           <Field label="Career stage">
-            <Input placeholder="Career stage (e.g. Emerging)" value={form.career_stage ?? ""} onChange={(e) => set("career_stage", e.target.value)} />
+            <Input placeholder="e.g. Emerging" value={form.career_stage ?? ""} onChange={(e) => set("career_stage", e.target.value)} />
           </Field>
           <Field label="Biography">
             <Textarea rows={4} placeholder="Biography" value={form.bio ?? ""} onChange={(e) => set("bio", e.target.value)} />
@@ -156,29 +185,6 @@ export function ProfileSettings({ form, set, fileRef, onAvatar, vKind, setVKind,
             <Textarea rows={4} placeholder="Artist statement" value={form.statement ?? ""} onChange={(e) => set("statement", e.target.value)} />
           </Field>
         </div>
-      </Card>
-      <Card>
-        <CardTitle>Notifications</CardTitle>
-        {NOTIFY_PREFS.map(([k, label]) => (
-          <Toggle key={k} label={label} checked={form[k]} onChange={(v) => set(k, v)} />
-        ))}
-      </Card>
-      <Card>
-        <CardTitle>Verification</CardTitle>
-        <p className="mt-1 text-sm text-muted-foreground">Verified profiles earn buyer and gallery trust. Tell us what to verify.</p>
-        <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-          <select value={vKind} onChange={(e) => setVKind(e.target.value)} className="rounded-xl border px-2 py-2 text-sm">
-            <option value="IDENTITY">Artist identity</option>
-            <option value="EXHIBITION">Exhibition history</option>
-            <option value="GALLERY">Gallery affiliation</option>
-            <option value="ORGANIZATION">Organization</option>
-          </select>
-          <Input placeholder="Evidence (link or reference)" value={vEvidence} onChange={(e) => setVEvidence(e.target.value)} />
-          <Button variant="secondary" onClick={onRequestVerification} className="sm:shrink-0">Request</Button>
-        </div>
-        {vRequests.map((v) => (
-          <p key={v.id} className="mt-1 text-xs text-muted-foreground">{v.kind} — {v.status}</p>
-        ))}
       </Card>
     </>
   );

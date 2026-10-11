@@ -57,7 +57,7 @@ export function Navbar() {
           <InstallButton compact />
           {account !== false && <NotificationBell />}
           <div className="hidden items-center gap-2 lg:flex">
-            <Link href="/settings" className="rounded-xl border px-3 py-1.5">Settings</Link>
+            <Link href="/profile" onClick={() => setOpen(false)} className="rounded-xl border px-3 py-1.5">Profile</Link>
             {account === null ? (
               <span className="px-3 py-1.5 text-muted-foreground">…</span>
             ) : authed ? (
@@ -85,7 +85,6 @@ export function Navbar() {
             </Link>
           ))}
           <div className="mt-1 flex gap-2">
-            <Link href="/settings" onClick={() => setOpen(false)} className="rounded-xl border px-3 py-1.5">Settings</Link>
             {authed ? (
               <button onClick={signOut} className="rounded-xl border px-3 py-1.5">Sign out</button>
             ) : (
