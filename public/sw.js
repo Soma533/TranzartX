@@ -20,7 +20,12 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys()
+      // Drop caches from older worker versions.
       .then((keys) => Promise.all(keys.filter((k) => !k.startsWith(VERSION)).map((k) => caches.delete(k))))
+      // Every deploy emits brand-new hashed asset filenames, so last build's
+      // entries can never be reused. Clearing them here stops the cache growing
+      // without bound on a device that installs many updates.
+      .then(() => caches.delete(ASSETS))
       .then(() => self.clients.claim())
   );
 });

@@ -22,6 +22,16 @@ const nextConfig = {
   async headers() {
     return [
       {
+        // The worker and manifest must never be served stale, otherwise an
+        // installed PWA keeps running an old shell after a deploy.
+        source: "/sw.js",
+        headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }]
+      },
+      {
+        source: "/manifest.webmanifest",
+        headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }]
+      },
+      {
         source: "/(.*)",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
