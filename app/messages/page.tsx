@@ -7,6 +7,7 @@ import { Composer } from "@/components/chat-composer";
 import { ChatHeader } from "@/components/chat-header";
 import { ForwardDialog } from "@/components/forward-dialog";
 import { ConversationList } from "@/components/conversation-list";
+import { ReplyBar } from "@/components/reply-bar";
 import { useMessages } from "@/hooks/use-messages";
 import { useToast } from "@/hooks/use-toast";
 
@@ -21,6 +22,7 @@ function MessagesInner() {
   const [sending, setSending] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [forwarding, setForwarding] = useState<Msg | null>(null);
+  const [replyTo, setReplyTo] = useState<Msg | null>(null);
   const boxRef = useRef<HTMLTextAreaElement>(null);
 
   const peer = conversations.find((c) => c.conversation_id === active)?.with ?? null;
@@ -42,7 +44,7 @@ function MessagesInner() {
     const body = draft.trim();
     setSending(true);
     try {
-      const r = await fetch("/api/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: cid, body }) });
+      const r = await fetch("/api/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: cid, body, reply_to_id: replyTo?.id ?? null }) });
       const j = await r.json().catch(() => null);
       if (!r.ok) {
         if (r.status === 401) router.replace("/login");
@@ -54,6 +56,7 @@ function MessagesInner() {
         setMessages((m) => (m.some((x) => x.id === saved.id) ? m : [...m, saved]));
       }
       setDraft("");
+      setReplyTo(null);
       if (boxRef.current) boxRef.current.style.height = "auto";
       // Refresh the inbox so this thread jumps to the top.
       void loadList(cid ?? undefined);
@@ -123,6 +126,7 @@ function MessagesInner() {
   }
 
   const actions = {
+    onReply: (m: Msg) => { setReplyTo(m); boxRef.current?.focus(); },
     onEdit: (m: Msg) => setEditingId(m.id),
     onDelete: (m: Msg) => void deleteMessage(m),
     onForward: (m: Msg) => setForwarding(m),
@@ -159,6 +163,7 @@ function MessagesInner() {
               />
             </div>
             <div className="sticky bottom-0 border-t bg-white p-2" style={{ paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom))" }}>
+              <ReplyBar target={replyTo} onCancel={() => setReplyTo(null)} />
               <Composer
                 draft={draft}
                 setDraft={setDraft}

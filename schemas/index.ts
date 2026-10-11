@@ -96,5 +96,6 @@ export const trackingSchema = z.object({
 export const messageSchema = z.object({
   conversation_id: z.string().uuid(),
   body: z.string().min(1).max(4000),
-  artwork_id: z.string().uuid().optional().nullable()
+  artwork_id: z.string().uuid().optional().nullable(),
+  reply_to_id: z.string().uuid().optional().nullable()
 });

@@ -51,7 +51,25 @@ export async function POST(request: Request) {
   if (!profileId) return apiError("VALIDATION", "Create your profile first", 422);
   const body = sanitizeText(parsed.data.body, 4000);
   if (!body) return apiError("VALIDATION", "Empty message", 422);
-  const { data, error } = await supabase.from("messages").insert({ ...parsed.data, body, sender_id: profileId }).select().single();
+
+  // A reply must point at a message in the same thread, otherwise drop it.
+  let replyTo: string | null = null;
+  if (parsed.data.reply_to_id) {
+    const { data: parent } = await supabase
+      .from("messages")
+      .select("id,conversation_id")
+      .eq("id", parsed.data.reply_to_id)
+      .maybeSingle();
+    if (parent && (parent as { conversation_id: string }).conversation_id === parsed.data.conversation_id) {
+      replyTo = parsed.data.reply_to_id;
+    }
+  }
+
+  const { data, error } = await supabase
+    .from("messages")
+    .insert({ ...parsed.data, reply_to_id: replyTo, body, sender_id: profileId })
+    .select()
+    .single();
   if (error) return apiError("DB", error.message, 500);
   // Bubble the conversation to the top of both inboxes.
   await supabase.from("conversations").update({ last_message_at: data.created_at }).eq("id", parsed.data.conversation_id);

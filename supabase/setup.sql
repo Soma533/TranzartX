@@ -677,3 +677,8 @@ $$ language plpgsql;
 drop trigger if exists message_authorship on messages;
 create trigger message_authorship before update on messages
 for each row execute function enforce_message_authorship();
+
+-- ================= supabase/migrations/0017_message_replies.sql =================
+-- 0017: threaded replies â€” a message can point at the one it answers.
+alter table messages add column if not exists reply_to_id uuid references messages(id) on delete set null;
+create index if not exists messages_reply_to_idx on messages (reply_to_id);
