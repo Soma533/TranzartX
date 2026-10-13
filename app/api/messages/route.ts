@@ -49,9 +49,11 @@ export async function POST(request: Request) {
   const parsed = messageSchema.safeParse(raw);
   if (!parsed.success) return apiError("VALIDATION", parsed.error.message, 422);
   if (!profileId) return apiError("VALIDATION", "Create your profile first", 422);
-  const body = sanitizeText(parsed.data.body ?? "", 4000);
+  // sanitizeText returns null for empty text, but messages.body is NOT NULL —
+  // an attachment-only message must store an empty string, not null.
+  const body = sanitizeText(parsed.data.body ?? "", 4000) ?? "";
   const attachment = parsed.data.attachment_url;
-  // Either a message body or an attachment is required — never both empty.
+  // Either a caption or an attachment is required — never both empty.
   if (!body && !attachment) return apiError("VALIDATION", "Empty message", 422);
 
   // A reply must point at a message in the same thread, otherwise drop it.
