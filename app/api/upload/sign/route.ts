@@ -7,7 +7,7 @@ export async function POST(request: Request) {
   if ("error" in guard) return guard.error;
   const { supabase } = guard;
   const body = (await request.json().catch(() => null)) as { bucket?: string; ext?: string } | null;
-  const bucket = body?.bucket === "avatars" ? "avatars" : "artworks";
+  const bucket = body?.bucket === "avatars" ? "avatars" : body?.bucket === "messages" ? "messages" : "artworks";
   const ext = (body?.ext ?? "jpg").replace(/[^a-z]/gi, "").slice(0, 4) || "jpg";
   const path = `${crypto.randomUUID()}.${ext}`;
   const { data, error } = await supabase.storage.from(bucket).createSignedUploadUrl(path);

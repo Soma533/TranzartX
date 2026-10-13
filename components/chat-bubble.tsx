@@ -4,6 +4,7 @@ import type { RefObject } from "react";
 import { Textarea } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import type { Msg } from "@/components/chat-thread";
+import { AttachmentView } from "@/components/chat-attachment-view";
 
 const THRESHOLD = 60; // px of rightward drag that arms a reply
 const MAX_DRAG = 88;
@@ -186,7 +187,8 @@ export function MessageBubble({ m, mine, isNew, replyTo, editing, onSaveEdit, on
                 </p>
               )}
               {m.forwarded_from && <p className="mb-0.5 text-[10px] uppercase tracking-wide opacity-70">Forwarded</p>}
-              <p className="whitespace-pre-wrap break-words">{m.body}</p>
+              {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}
+              <AttachmentView m={m} />
             </>
           )}
           <span className={`mt-0.5 flex items-center justify-end gap-1 text-[10px] leading-none ${mine ? "text-primary-foreground/70" : "text-muted-foreground"}`}>

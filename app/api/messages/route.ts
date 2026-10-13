@@ -49,8 +49,10 @@ export async function POST(request: Request) {
   const parsed = messageSchema.safeParse(raw);
   if (!parsed.success) return apiError("VALIDATION", parsed.error.message, 422);
   if (!profileId) return apiError("VALIDATION", "Create your profile first", 422);
-  const body = sanitizeText(parsed.data.body, 4000);
-  if (!body) return apiError("VALIDATION", "Empty message", 422);
+  const body = sanitizeText(parsed.data.body ?? "", 4000);
+  const attachment = parsed.data.attachment_url;
+  // Either a message body or an attachment is required — never both empty.
+  if (!body && !attachment) return apiError("VALIDATION", "Empty message", 422);
 
   // A reply must point at a message in the same thread, otherwise drop it.
   let replyTo: string | null = null;
@@ -158,7 +160,13 @@ async function forwardMessage(
       sender_id: profileId,
       body: original.body,
       artwork_id: original.artwork_id,
-      forwarded_from: original.id
+      forwarded_from: original.id,
+      // The attachment travels with the message, as it does on Instagram.
+      attachment_url: original.attachment_url,
+      attachment_type: original.attachment_type,
+      attachment_name: original.attachment_name,
+      attachment_size: original.attachment_size,
+      attachment_duration_ms: original.attachment_duration_ms
     })
     .select()
     .single();

@@ -6,7 +6,19 @@ type Person = { id: string; name: string; avatar_url: string | null; last_seen_a
 type MsgRow = {
   id: string; conversation_id: string; body: string; created_at: string;
   sender_id: string; deleted_at: string | null; read_at: string | null;
+  attachment_type?: string | null; attachment_name?: string | null;
 };
+
+/** Short label for a message that carries only an attachment. */
+function previewOf(m: MsgRow): string {
+  if (m.deleted_at) return "Message deleted";
+  if (!m.body) {
+    if (m.attachment_type === "image") return "Sent a photo";
+    if (m.attachment_type === "audio") return "Sent a voice message";
+    if (m.attachment_type === "file") return `Sent ${m.attachment_name ?? "a file"}`;
+  }
+  return m.body;
+}
 
 /**
  * Inbox: newest activity first, with last message + unread count per thread.
@@ -43,7 +55,7 @@ export async function conversationList(supabase: SupabaseClient, profileId: stri
       .neq("profile_id", profileId),
     supabase
       .from("messages")
-      .select("id,conversation_id,body,created_at,sender_id,deleted_at,read_at")
+      .select("id,conversation_id,body,created_at,sender_id,deleted_at,read_at,attachment_type,attachment_name")
       .in("conversation_id", ids)
       .order("created_at", { ascending: false })
       .limit(1000)
@@ -73,7 +85,7 @@ export async function conversationList(supabase: SupabaseClient, profileId: stri
       conversation_id: c.conversation_id,
       with: personByConv.get(c.conversation_id) ?? null,
       last_message: last
-        ? { body: last.deleted_at ? "Message deleted" : last.body, created_at: last.created_at, mine: last.sender_id === profileId }
+        ? { body: previewOf(last), created_at: last.created_at, mine: last.sender_id === profileId }
         : null,
       unread: unreadByConv.get(c.conversation_id) ?? 0,
       last_read_at: c.last_read_at

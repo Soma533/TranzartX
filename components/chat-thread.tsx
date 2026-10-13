@@ -13,6 +13,11 @@ export interface Msg {
   deleted_at?: string | null;
   forwarded_from?: string | null;
   reply_to_id?: string | null;
+  attachment_url?: string | null;
+  attachment_type?: "image" | "audio" | "file" | null;
+  attachment_name?: string | null;
+  attachment_size?: number | null;
+  attachment_duration_ms?: number | null;
 }
 
 /** Chat bubble clock: time for today, "Yesterday 14:05" for older (PRD §18). */

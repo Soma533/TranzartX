@@ -1,17 +1,39 @@
 import { requireUser } from "@/services/auth-guard";
 import { apiError } from "@/lib/logger";
+import { z } from "zod";
 
-export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const { id } = await ctx.params;
+const paramsSchema = z.object({ id: z.string().uuid() });
+
+/**
+ * Public profile header data for any member — used by the Instagram-style
+ * profile header. Profiles are publicly readable, so this also works signed out.
+ */
+export async function GET(_request: Request, ctx: { params: Promise<{ id: string }> }) {
+  const parsed = paramsSchema.safeParse(await ctx.params);
+  if (!parsed.success) return apiError("VALIDATION", "Invalid profile id", 422);
+
   const guard = await requireUser();
-  if ("error" in guard) return guard.error;
-  const { supabase } = guard;
-  const [{ data: profile }, { data: artworks }, { data: goals }] = await Promise.all([
-    supabase.from("profiles").select("*").eq("id", id).single(),
-    supabase.from("artworks").select("*").eq("artist_id", id).order("created_at", { ascending: false }).limit(24),
-    supabase.from("career_goals").select("*").eq("profile_id", id).limit(5)
-  ]);
+  const supabase = "error" in guard ? (await serverClient()) : guard.supabase;
+  if (!supabase) return apiError("NOT_CONFIGURED", "Supabase env vars missing", 503);
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id,name,short_desc,bio,location_city,location_country,career_stage,avatar_url,is_verified")
+    .eq("id", parsed.data.id)
+    .maybeSingle();
   if (!profile) return apiError("NOT_FOUND", "Profile not found", 404);
-  await supabase.from("analytics_events").insert({ event: "profile_view", target_id: id });
-  return Response.json({ profile, artworks: artworks ?? [], goals: goals ?? [] });
+
+  const { data: artworks } = await supabase
+    .from("artworks")
+    .select("id,title,image_url")
+    .eq("artist_id", parsed.data.id)
+    .order("created_at", { ascending: false })
+    .limit(24);
+
+  return Response.json({ profile, artworks: artworks ?? [] });
+}
+
+async function serverClient() {
+  const { createServerSupabase } = await import("@/lib/supabase/server");
+  return createServerSupabase();
 }

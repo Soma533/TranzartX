@@ -1,23 +1,42 @@
 import { createClient } from "@/lib/supabase/client";
 
-const MAX_BYTES = 8 * 1024 * 1024;
-const ALLOWED = ["image/jpeg", "image/png", "image/webp"];
+export type UploadBucket = "artworks" | "avatars" | "messages";
 
-/** Upload a file via signed URL and return its public URL. Throws with a user-facing message. */
-export async function uploadImage(
+const MAX_IMAGE = 8 * 1024 * 1024;
+const MAX_FILE = 25 * 1024 * 1024;
+
+const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const AUDIO_TYPES = ["audio/webm", "audio/ogg", "audio/mpeg", "audio/mp4", "audio/wav", "audio/x-m4a"];
+const ALL_TYPES = [...IMAGE_TYPES, ...AUDIO_TYPES, "application/pdf", "text/plain", "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"];
+
+/** Upload a file via a signed URL and return its public URL. Throws with a user-facing message. */
+export async function uploadFile(
   file: File,
-  bucket: "artworks" | "avatars" = "artworks"
+  bucket: UploadBucket = "artworks",
+  opts: { kind?: "image" | "audio" | "file" } = {}
 ): Promise<string> {
-  if (!ALLOWED.includes(file.type)) throw new Error("Use a JPG, PNG or WebP image.");
-  if (file.size > MAX_BYTES) throw new Error("Image must be under 8 MB.");
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+  const kind = opts.kind ?? "image";
+  const limit = kind === "image" ? MAX_IMAGE : MAX_FILE;
+  if (!ALL_TYPES.includes(file.type)) {
+    throw new Error(
+      kind === "audio"
+        ? "Unsupported recording format."
+        : "Use an image, PDF, document or plain text file."
+    );
+  }
+  if (file.size > limit) {
+    throw new Error(kind === "image" ? "Image must be under 8 MB." : "File must be under 25 MB.");
+  }
+  const ext = (file.name.split(".").pop() ?? "bin").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) || "bin";
 
   const sign = await fetch("/api/upload/sign", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ bucket, ext })
   });
-  if (sign.status === 401) throw new Error("Sign in to upload images.");
+  if (sign.status === 401) throw new Error("Sign in to send attachments.");
   const sj = (await sign.json().catch(() => null)) as { path?: string; token?: string } | null;
   if (!sign.ok || !sj?.path || !sj?.token) throw new Error("Could not prepare upload. Try again.");
 
@@ -27,4 +46,10 @@ export async function uploadImage(
 
   const { data } = supabase.storage.from(bucket).getPublicUrl(sj.path);
   return data.publicUrl;
+}
+
+/** Image-only upload used by portfolio and avatars. */
+export async function uploadImage(file: File, bucket: "artworks" | "avatars" = "artworks"): Promise<string> {
+  if (!IMAGE_TYPES.includes(file.type)) throw new Error("Use a JPG, PNG or WebP image.");
+  return uploadFile(file, bucket, { kind: "image" });
 }

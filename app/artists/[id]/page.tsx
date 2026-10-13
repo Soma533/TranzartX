@@ -2,7 +2,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { scoreCompleteness } from "@/services/domain.service";
-import { FollowStats } from "@/components/follow-stats";
+import { ProfileHeader } from "@/components/profile-header";
 
 /** Public artist profile — professional home (PRD §9). Reads via public RLS, no login required. */
 export default async function ArtistPage({ params }: { params: Promise<{ id: string }> }) {
@@ -32,31 +32,19 @@ export default async function ArtistPage({ params }: { params: Promise<{ id: str
 
   return (
     <div className="grid gap-4">
-      <div className="rounded-2xl border bg-white p-6">
-        <div className="flex items-center gap-4">
-          {p.avatar_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={p.avatar_url} alt={p.name} className="h-16 w-16 rounded-full object-cover" />
-          ) : (
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary text-xl font-bold">{p.name.slice(0, 1)}</div>
-          )}
-          <div>
-            <h1 className="text-2xl font-bold">{p.name} {p.is_verified ? "✓" : null}</h1>
-            <p className="text-sm text-muted-foreground">
-              {[p.location_city, p.location_country].filter(Boolean).join(", ") || "Location not set"}
-              {p.is_verified ? " · Verified" : " · Self-reported"}
-            </p>
-            {p.short_desc && <p className="mt-1 text-sm">{p.short_desc}</p>}
+      <ProfileHeader profileId={id} />
+      <div className="rounded-2xl border bg-background p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm">Profile health: <span className="font-semibold">{pct}%</span> complete
+            {p.is_verified ? " · Verified" : " · Self-reported"}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Link href={`/messages?to=${id}`} className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">Message</Link>
+            <Link href="/opportunities" className="rounded-xl border px-4 py-2 text-sm font-medium">View opportunities</Link>
           </div>
         </div>
-        <p className="mt-3 text-sm">Profile health: {pct}% complete</p>
-        <FollowStats profileId={id} />
         {tips.length > 0 && <p className="mt-1 text-xs text-muted-foreground">Missing: {tips.slice(0, 3).join(" · ")}</p>}
         {p.commission_open && <p className="mt-2 text-sm font-medium text-primary">Open to commissions & collaborations</p>}
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Link href={`/messages?to=${id}`} className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">Message</Link>
-          <Link href="/opportunities" className="rounded-xl border px-4 py-2 text-sm font-medium">View opportunities</Link>
-        </div>
       </div>
       {p.bio && <Card><CardTitle>Biography</CardTitle><p className="mt-1 text-sm">{p.bio}</p></Card>}
       {p.statement && <Card><CardTitle>Artist statement</CardTitle><p className="mt-1 text-sm">{p.statement}</p></Card>}

@@ -95,7 +95,12 @@ export const trackingSchema = z.object({
 
 export const messageSchema = z.object({
   conversation_id: z.string().uuid(),
-  body: z.string().min(1).max(4000),
+  body: z.string().max(4000),
   artwork_id: z.string().uuid().optional().nullable(),
-  reply_to_id: z.string().uuid().optional().nullable()
+  reply_to_id: z.string().uuid().optional().nullable(),
+  attachment_url: z.string().url().max(2000).optional().nullable(),
+  attachment_type: z.enum(["image", "audio", "file"]).optional().nullable(),
+  attachment_name: z.string().max(200).optional().nullable(),
+  attachment_size: z.number().int().nonnegative().optional().nullable(),
+  attachment_duration_ms: z.number().int().nonnegative().optional().nullable()
 });

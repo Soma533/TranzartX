@@ -9,6 +9,7 @@ import { ForwardDialog } from "@/components/forward-dialog";
 import { ConversationList } from "@/components/conversation-list";
 import { ReplyBar } from "@/components/reply-bar";
 import { MessageActionsSheet } from "@/components/message-actions-sheet";
+import type { Attachment } from "@/components/chat-attachments";
 import { useMessages } from "@/hooks/use-messages";
 import { useToast } from "@/hooks/use-toast";
 
@@ -26,12 +27,13 @@ function MessagesInner() {
   const [replyTo, setReplyTo] = useState<Msg | null>(null);
   const [actionFor, setActionFor] = useState<Msg | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [attachment, setAttachment] = useState<Attachment | null>(null);
   const boxRef = useRef<HTMLTextAreaElement>(null);
 
   const peer = conversations.find((c) => c.conversation_id === active)?.with ?? null;
 
   async function send() {
-    if (!draft.trim() || sending || starting) return;
+    if ((!draft.trim() && !attachment) || sending || starting) return;
     let cid = active;
     if (!cid) {
       if (!to) { push("Select or start a conversation first"); return; }
@@ -47,7 +49,21 @@ function MessagesInner() {
     const body = draft.trim();
     setSending(true);
     try {
-      const r = await fetch("/api/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation_id: cid, body, reply_to_id: replyTo?.id ?? null }) });
+      const payload = {
+        conversation_id: cid,
+        body,
+        reply_to_id: replyTo?.id ?? null,
+        ...(attachment
+          ? {
+              attachment_url: attachment.url,
+              attachment_type: attachment.type,
+              attachment_name: attachment.name ?? null,
+              attachment_size: attachment.size ?? null,
+              attachment_duration_ms: attachment.duration_ms ?? null
+            }
+          : {})
+      };
+      const r = await fetch("/api/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const j = await r.json().catch(() => null);
       if (!r.ok) {
         if (r.status === 401) router.replace("/login");
@@ -60,6 +76,7 @@ function MessagesInner() {
       }
       setDraft("");
       setReplyTo(null);
+      setAttachment(null);
       if (boxRef.current) boxRef.current.style.height = "auto";
       // Refresh the inbox so this thread jumps to the top.
       void loadList(cid ?? undefined);
@@ -141,7 +158,7 @@ function MessagesInner() {
     onCancelEdit: () => setEditingId(null)
   };
 
-  const sendDisabled = !draft.trim() || sending || starting;
+  const sendDisabled = (!draft.trim() && !attachment) || sending || starting;
 
   return (
     // Fixed height on every screen so only the thread scrolls and the header
@@ -182,6 +199,8 @@ function MessagesInner() {
                 sending={sending}
                 active={active !== null}
                 hasTarget={Boolean(to)}
+                attachment={attachment}
+                onAttach={setAttachment}
               />
             </div>
           </>
