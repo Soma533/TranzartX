@@ -7,6 +7,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createClient } from "@/lib/supabase/client";
 import { landingForCurrentUser } from "@/lib/landing";
+import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -38,14 +39,12 @@ function friendly(message: string): string {
 
 export function AuthForm({ mode, notice }: { mode: "login" | "signup"; notice?: string | null }) {
   const router = useRouter();
+  const { push } = useToast();
   const [serverMsg, setServerMsg] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
-  // Email-confirmation code (OTP) flow — replaces the old reset-link email.
-  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
-  const [codeEmail, setCodeEmail] = useState("");
-  const [code, setCode] = useState("");
-  const [verifying, setVerifying] = useState(false);
+  const [sentTo, setSentTo] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
   const schema = mode === "signup" ? signupSchema : loginSchema;
   type FormValues = { email: string; password: string; name?: string; role?: string };
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({
@@ -67,8 +66,8 @@ export function AuthForm({ mode, notice }: { mode: "login" | "signup"; notice?: 
         const v = values as z.infer<typeof signupSchema>;
         const { error } = await supabase.auth.signUp({ email: v.email, password: v.password, options: { data: { name: v.name, role: v.role ?? "ARTIST" } } });
         if (error) throw error;
-        setServerMsg("Account created — enter the 6-digit code we emailed you.");
-        setPendingEmail(v.email);
+        setServerMsg("Account created — check your inbox to confirm, then log in.");
+        setSentTo(v.email);
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email: values.email, password: values.password });
         if (error) throw error;
@@ -80,31 +79,17 @@ export function AuthForm({ mode, notice }: { mode: "login" | "signup"; notice?: 
     }
   }
 
-  async function verifyCode() {
-    const email = pendingEmail || codeEmail.trim();
-    if (!email || code.trim().length < 6) {
-      setServerMsg("Enter your email and the 6-digit code from the email.");
-      return;
-    }
-    setVerifying(true);
-    setServerMsg(null);
+  async function resend() {
+    if (!sentTo || resending) return;
+    setResending(true);
     try {
-      const supabase = createClient();
-      const token = code.trim();
-      // "email" covers the OTP flow; "signup" covers a signup confirmation code.
-      let result = await supabase.auth.verifyOtp({ email, token, type: "email" });
-      if (result.error) {
-        result = await supabase.auth.verifyOtp({ email, token, type: "signup" });
-      }
-      if (result.error) throw result.error;
-      setPendingEmail(null);
-      setCode("");
-      setServerMsg("Email confirmed — setting up your profile.");
-      router.replace(await landingForCurrentUser());
-    } catch (err) {
-      setServerMsg(friendly(err instanceof Error ? err.message : "That code is not valid"));
+      // Re-sending the same confirmation link keeps the original account.
+      const { error } = await createClient().auth.resend({ type: "signup", email: sentTo });
+      push(error ? "Could not resend — try signing in instead." : "Confirmation email sent again.");
+    } catch {
+      push("Could not resend — check your connection.");
     } finally {
-      setVerifying(false);
+      setResending(false);
     }
   }
 
@@ -163,46 +148,18 @@ export function AuthForm({ mode, notice }: { mode: "login" | "signup"; notice?: 
       <Button variant="outline" className="mt-3 w-full" onClick={google}>Continue with Google</Button>
       {serverMsg && <p className="mt-3 text-sm text-muted-foreground">{serverMsg}</p>}
 
-      {/* Email-confirmation code */}
-      {pendingEmail !== null ? (
+      {/* Confirmation email sent — plain link confirmation, no code. */}
+      {sentTo && (
         <div className="mt-3 rounded-xl border p-3">
-          <p className="text-sm font-medium">Confirm your email</p>
+          <p className="text-sm font-medium">Check your inbox</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {pendingEmail
-              ? `We sent a 6-digit code to ${pendingEmail}. Enter it to finish.`
-              : "Enter the email you signed up with and the 6-digit code we sent."}
+            We sent a confirmation link to <span className="font-medium text-foreground">{sentTo}</span>.
+            Open it to activate your account, then log in.
           </p>
-          <div className="mt-2 grid gap-2">
-            {!pendingEmail && (
-              <Input
-                value={codeEmail}
-                onChange={(e) => setCodeEmail(e.target.value)}
-                placeholder="you@example.com"
-                type="email"
-                autoComplete="email"
-                aria-label="Email used to sign up"
-              />
-            )}
-            <div className="flex gap-2">
-              <Input
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                placeholder="000000"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                aria-label="Confirmation code"
-                onKeyDown={(e) => { if (e.key === "Enter") void verifyCode(); }}
-              />
-              <Button type="button" onClick={() => void verifyCode()} disabled={verifying || code.length < 6 || (!pendingEmail && !codeEmail)} className="shrink-0">
-                {verifying ? "Checking…" : "Verify"}
-              </Button>
-            </div>
-          </div>
+          <Button variant="outline" className="mt-2 w-full" onClick={() => void resend()} disabled={resending}>
+            {resending ? "Sending…" : "Resend confirmation email"}
+          </Button>
         </div>
-      ) : (
-        <button type="button" onClick={() => setPendingEmail("")} className="mt-3 text-xs text-muted-foreground underline">
-          I have a confirmation code
-        </button>
       )}
       <div className="mt-4 flex justify-between text-sm">
         {mode === "signup" ? (
