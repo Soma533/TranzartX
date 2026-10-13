@@ -25,6 +25,16 @@ export default function manifest(): MetadataRoute.Manifest {
       { name: "Discover art", short_name: "Discover", url: "/discover" },
       { name: "Messages", short_name: "Messages", url: "/messages" },
       { name: "My portfolio", short_name: "Portfolio", url: "/portfolio" }
+    ],
+    // Declaring the Android package lets Chrome's getInstalledRelatedApps()
+    // report the app as installed, which is the only signal available while
+    // the user is browsing in a normal tab rather than the installed app.
+    related_applications: [
+      {
+        platform: "play",
+        id: "app.vercel.tranzartx.twa",
+        url: "https://play.google.com/store/apps/details?id=app.vercel.tranzartx.twa"
+      }
     ]
   };
 }

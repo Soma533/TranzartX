@@ -1,6 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
-import { confirmInstalled, useAppInstalled, type BeforeInstallPromptEvent } from "@/hooks/use-app-installed";
+import {
+  confirmInstalled,
+  dismissInstallPrompt,
+  installPromptDismissed,
+  useAppInstalled,
+  type BeforeInstallPromptEvent
+} from "@/hooks/use-app-installed";
 
 /**
  * `beforeinstallprompt` fires once, early, and can be missed if we only listen
@@ -69,12 +75,19 @@ export function InstallButton({ compact = false }: { compact?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [showIOSHelp, setShowIOSHelp] = useState(false);
   const installed = useAppInstalled();
+  const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
     const rerender = () => force((n) => n + 1);
     subscribers.add(rerender);
+    setDismissed(installPromptDismissed());
     return () => { subscribers.delete(rerender); };
   }, []);
+
+  function dismiss() {
+    dismissInstallPrompt();
+    setDismissed(true);
+  }
 
   async function install() {
     setBusy(true);
@@ -99,24 +112,40 @@ export function InstallButton({ compact = false }: { compact?: boolean }) {
     }
   }
 
-  // Nothing to offer once the app is installed.
-  if (installed) return null;
+  // Nothing to offer once the app is installed, or once the user dismissed it.
+  if (installed || dismissed) return null;
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => void install()}
-        disabled={busy}
-        title="Install TranzartX on this device"
-        aria-label="Install TranzartX on this device"
-        className={`inline-flex items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/5 font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-60 ${compact ? "h-10 w-10 shrink-0 px-0 sm:w-auto sm:px-3" : "px-4 py-2 text-sm"}`}
-      >
-        <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 3.5v11M8 11l4 4 4-4M4.5 17.5v1.2a1.8 1.8 0 0 0 1.8 1.8h11.4a1.8 1.8 0 0 0 1.8-1.8v-1.2" />
-        </svg>
-        <span className={compact ? "hidden sm:inline" : ""}>{busy ? "Installing…" : "Install app"}</span>
-      </button>
+      <span className="relative inline-flex items-center">
+        <button
+          type="button"
+          onClick={() => void install()}
+          disabled={busy}
+          title="Install TranzartX on this device"
+          aria-label="Install TranzartX on this device"
+          className={`inline-flex items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/5 font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-60 ${compact ? "h-10 w-10 shrink-0 px-0 sm:w-auto sm:px-3" : "px-4 py-2 text-sm"}`}
+        >
+          <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 3.5v11M8 11l4 4 4-4M4.5 17.5v1.2a1.8 1.8 0 0 0 1.8 1.8h11.4a1.8 1.8 0 0 0 1.8-1.8v-1.2" />
+          </svg>
+          <span className={compact ? "hidden sm:inline" : ""}>{busy ? "Installing…" : "Install app"}</span>
+        </button>
+
+        {/* Browsers expose no "is installed" API while the user is in a normal
+            tab, so this gives them a permanent, remembered way to remove it. */}
+        <button
+          type="button"
+          onClick={() => { dismiss(); setShowIOSHelp(false); }}
+            title="Hide the install button on this device"
+          aria-label="Hide the install button on this device"
+          className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full border bg-background text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <svg aria-hidden viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <path d="M6 6l12 12M18 6 6 18" />
+          </svg>
+        </button>
+      </span>
 
       {showIOSHelp && (
         <div
@@ -143,7 +172,13 @@ export function InstallButton({ compact = false }: { compact?: boolean }) {
             )}
             <button
               type="button"
-              onClick={() => setShowIOSHelp(false)}
+              onClick={() => {
+                setShowIOSHelp(false);
+                // Reaching this dialog means the browser would not install from
+                // the page, which is exactly the already-installed case. Stop
+                // asking rather than leaving a button that cannot do anything.
+                if (!isIOS()) dismiss();
+              }}
               className="mt-4 w-full rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
             >
               Got it

@@ -108,4 +108,27 @@ export function confirmInstalled() {
   markInstalled();
 }
 
+const HIDDEN = "tranzartx:install-hidden";
+
+/**
+ * Hides the install affordance permanently for this device. Used when the user
+ * dismisses it without installing — browsers report nothing that would let the
+ * button re-hide itself later while they browse in a normal tab.
+ */
+export function dismissInstallPrompt() {
+  try {
+    window.localStorage.setItem(HIDDEN, "1");
+  } catch {
+    /* private mode — the choice simply does not persist */
+  }
+}
+
+export function installPromptDismissed(): boolean {
+  try {
+    return window.localStorage.getItem(HIDDEN) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export type { BeforeInstallPromptEvent };
