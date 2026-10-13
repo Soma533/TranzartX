@@ -1,10 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-}
+import { confirmInstalled, useAppInstalled, type BeforeInstallPromptEvent } from "@/hooks/use-app-installed";
 
 /**
  * `beforeinstallprompt` fires once, early, and can be missed if we only listen
@@ -62,7 +58,8 @@ function isIOS() {
 }
 
 /**
- * Install affordance. Always visible. Tapping opens the browser's own install
+ * Install affordance. Hidden once TranzartX is installed on the device, since
+ * there is nothing left to install. Tapping opens the browser's own install
  * dialog immediately — the app installs straight away, with no extra screen in
  * between. The instruction card is a last resort for iOS, where no browser
  * exposes the install event at all.
@@ -71,6 +68,7 @@ export function InstallButton({ compact = false }: { compact?: boolean }) {
   const [, force] = useState(0);
   const [busy, setBusy] = useState(false);
   const [showIOSHelp, setShowIOSHelp] = useState(false);
+  const installed = useAppInstalled();
 
   useEffect(() => {
     const rerender = () => force((n) => n + 1);
@@ -84,8 +82,11 @@ export function InstallButton({ compact = false }: { compact?: boolean }) {
       const prompt = await waitForPrompt();
       if (prompt) {
         await prompt.prompt();
-        await prompt.userChoice;
+        const choice = await prompt.userChoice;
         deferred = null;
+        // Accepted means the app is now on the device — hide the button. The
+        // `appinstalled` event covers the rest, but it does not fire everywhere.
+        if (choice.outcome === "accepted") confirmInstalled();
         notify();
         return;
       }
@@ -97,6 +98,9 @@ export function InstallButton({ compact = false }: { compact?: boolean }) {
       setBusy(false);
     }
   }
+
+  // Nothing to offer once the app is installed.
+  if (installed) return null;
 
   return (
     <>
