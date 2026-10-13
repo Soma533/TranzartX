@@ -21,14 +21,15 @@ export async function GET(request: Request) {
   if (!supabase) return apiError("NOT_CONFIGURED", "Supabase env vars missing", 503);
 
   const { profileId, relation } = parsed.data;
+  // followers = rows whose following_id is this profile (and vice versa).
   const column = relation === "followers" ? "following_id" : "follower_id";
   const { data: rows, error } = await supabase
     .from("follows")
-    .select("profile_id")
+    .select(column)
     .eq(column, profileId);
   if (error) return apiError("DB", error.message, 500);
 
-  const ids = ((rows as { profile_id: string }[] | null) ?? []).map((r) => r.profile_id);
+  const ids = ((rows as Record<string, string>[] | null) ?? []).map((r) => r[column]);
   if (ids.length === 0) return Response.json({ people: [], count: 0 });
 
   const { data: people, error: pErr } = await supabase

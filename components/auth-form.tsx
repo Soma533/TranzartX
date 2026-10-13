@@ -45,6 +45,7 @@ export function AuthForm({ mode, notice }: { mode: "login" | "signup"; notice?: 
   const [showPassword, setShowPassword] = useState(false);
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [resending, setResending] = useState(false);
+  const [resendDone, setResendDone] = useState(false);
   const schema = mode === "signup" ? signupSchema : loginSchema;
   type FormValues = { email: string; password: string; name?: string; role?: string };
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({
@@ -80,12 +81,18 @@ export function AuthForm({ mode, notice }: { mode: "login" | "signup"; notice?: 
   }
 
   async function resend() {
-    if (!sentTo || resending) return;
+    if (!sentTo || resending || resendDone) return;
     setResending(true);
     try {
-      // Re-sending the same confirmation link keeps the original account.
+      // Auth mail is heavily rate-limited, so one resend per session: tapping
+      // again would burn the hourly quota without reaching the inbox sooner.
       const { error } = await createClient().auth.resend({ type: "signup", email: sentTo });
-      push(error ? "Could not resend — try signing in instead." : "Confirmation email sent again.");
+      if (error) {
+        push("Could not resend just now — try again in a few minutes.");
+      } else {
+        setResendDone(true);
+        push("Confirmation email sent again.");
+      }
     } catch {
       push("Could not resend — check your connection.");
     } finally {
@@ -156,8 +163,8 @@ export function AuthForm({ mode, notice }: { mode: "login" | "signup"; notice?: 
             We sent a confirmation link to <span className="font-medium text-foreground">{sentTo}</span>.
             Open it to activate your account, then log in.
           </p>
-          <Button variant="outline" className="mt-2 w-full" onClick={() => void resend()} disabled={resending}>
-            {resending ? "Sending…" : "Resend confirmation email"}
+          <Button variant="outline" className="mt-2 w-full" onClick={() => void resend()} disabled={resending || resendDone}>
+            {resendDone ? "Confirmation sent" : resending ? "Sending…" : "Resend confirmation email"}
           </Button>
         </div>
       )}
