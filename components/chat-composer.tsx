@@ -55,7 +55,9 @@ export function Composer({ draft, setDraft, boxRef, send, disabled, starting, se
       )}
 
       <div className="flex items-end gap-2">
-        <AttachmentBar onAttach={(a) => onAttach(a)} disabled={disabled} />
+        {/* The picker must stay enabled with an empty textbox — gating it on the
+            send button's disabled state is what made attachments unusable. */}
+        <AttachmentBar onAttach={(a) => onAttach(a)} disabled={!active && !hasTarget} />
         <Textarea
         ref={boxRef}
         rows={1}
@@ -84,7 +86,13 @@ export function Composer({ draft, setDraft, boxRef, send, disabled, starting, se
         onClick={() => void send()}
         disabled={disabled}
         aria-label="Send message"
-        title={disabled && !draft.trim() ? "Type a message first" : !active && !hasTarget ? "Select a conversation first" : "Send message (Ctrl+Enter)"}
+        title={
+          disabled && !draft.trim() && !attachment
+            ? "Type a message or attach something first"
+            : !active && !hasTarget
+              ? "Select a conversation first"
+              : "Send message (Ctrl+Enter)"
+        }
         className="h-10 w-10 shrink-0 rounded-full border-0 bg-primary px-0 text-primary-foreground hover:opacity-90"
       >
         {sending || starting ? (

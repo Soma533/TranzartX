@@ -29,6 +29,25 @@ function secondsLabel(ms?: number | null) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
+/** Recording formats to try, best first, across Android Chrome and iOS Safari. */
+const AUDIO_MIMES = [
+  "audio/webm;codecs=opus",
+  "audio/webm",
+  "audio/mp4",
+  "audio/ogg;codecs=opus",
+  "audio/ogg"
+];
+
+/** Extension for the recording type the browser chose. */
+const EXT_FOR: Record<string, string> = {
+  "audio/webm": "webm",
+  "audio/ogg": "ogg",
+  "audio/mp4": "m4a",
+  "audio/mpeg": "mp3",
+  "audio/wav": "wav",
+  "audio/x-m4a": "m4a"
+};
+
 /**
  * Instagram-style attachment controls: photo, voice note and file.
  * Uploads immediately on pick so sending stays instant; the caller attaches
@@ -43,14 +62,20 @@ export function AttachmentBar({ onAttach, disabled }: Props) {
   const [elapsed, setElapsed] = useState(0);
   const recorder = useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);
+  // The recorder's onstop callback closes over the render that started it, so
+  // the duration has to come from a ref rather than the elapsed state value.
+  const elapsedRef = useRef(0);
 
   useEffect(() => {
     if (!recording) return;
-    const t = setInterval(() => setElapsed((e) => e + 1000), 1000);
+    const t = setInterval(() => {
+      elapsedRef.current += 1000;
+      setElapsed(elapsedRef.current);
+    }, 1000);
     return () => clearInterval(t);
   }, [recording]);
 
-  async function upload(file: File, kind: "image" | "audio" | "file") {
+  async function upload(file: File, kind: "image" | "audio" | "file", durationMs: number | null = null) {
     setBusy(kind === "audio" ? null : kind);
     try {
       const url = await uploadFile(file, "messages", { kind });
@@ -59,7 +84,7 @@ export function AttachmentBar({ onAttach, disabled }: Props) {
         type: kind,
         name: file.name,
         size: file.size,
-        duration_ms: kind === "audio" ? elapsed : null
+        duration_ms: kind === "audio" ? durationMs : null
       });
       push(kind === "image" ? "Photo attached" : kind === "audio" ? "Voice message attached" : "File attached");
     } catch (err) {
@@ -76,19 +101,22 @@ export function AttachmentBar({ onAttach, disabled }: Props) {
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mime = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "";
-      const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+      // Android Chrome records webm/opus, iOS Safari records mp4. Pick whatever
+      // this browser actually supports and let it fall back to its own default.
+      const mimeType = AUDIO_MIMES.find((m) => MediaRecorder.isTypeSupported(m));
+      const rec = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       chunks.current = [];
       rec.ondataavailable = (e) => { if (e.data.size > 0) chunks.current.push(e.data); };
       rec.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(chunks.current, { type: rec.mimeType || "audio/webm" });
+        const type = rec.mimeType || mimeType || "audio/webm";
+        const blob = new Blob(chunks.current, { type });
         if (blob.size === 0) { push("Nothing was recorded."); return; }
-        const ext = (rec.mimeType || "audio/webm").includes("ogg") ? "ogg" : "webm";
-        const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: blob.type });
-        await upload(file, "audio");
+        const file = new File([blob], `voice-${Date.now()}.${EXT_FOR[type.split(";")[0] ?? ""] ?? "webm"}`, { type });
+        await upload(file, "audio", elapsedRef.current);
       };
       recorder.current = rec;
+      elapsedRef.current = 0;
       setElapsed(0);
       setRecording(true);
       rec.start();
